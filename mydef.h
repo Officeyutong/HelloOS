@@ -57,6 +57,6 @@ void write_segment_entry(void* ptr,
                          uint8 flags,
                          uint8 access_byte);
 
-#define vbe_info ((vbe_mode_info_structure*)(0x9000))
+#define vbe_info ((vbe_mode_info_structure*)(0xC500))
 
 #endif

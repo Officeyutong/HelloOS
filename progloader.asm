@@ -1,21 +1,25 @@
-ORG 0x8200  ;引导器加载的后面的扇区的地址
+ORG 0xC100  ;引导器加载的后面的扇区的地址
 
 ; 0x7E00 ~ 0x7FFFF - 实模式可用内存
 ; 0x500 ~ 0x7BFF - 实模式可用内存
+
+; 实模式栈放在 0x8000
+; FAT表放在 0x8200~0xA5FF (512*18 byte，读两张)
+; 根目录表放在 0xA600~0xC0FF(512*14 byte)
 
 [BITS 16]
     CYLS_STORE EQU 0x0ff0; 读入柱面数的存储地址
     LED_STATE_STORE EQU 0x0ff1; 键盘LED灯状态的存储地址
     VMODE_STATE_STORE EQU 0x0ff2; VMODE状态
-    ; SCREEN_X_STORE EQU 0x0ff4; 分辨率X
-    ; SCREEN_Y_STORE EQU 0x0ff6; 分辨率Y
-    ; VRAM EQU 0x0ff8; 图像缓冲区开始地址
-
-    ; VBE_INFO EQU 0x1000 ;/ VBE 信息结构体(512 byte)
 
     CODE_SEGMENT EQU 0x00280000 ; C程序代码段
     DISK_CACHE EQU 0x00100000; 磁盘数据缓存
-    VBE_INFO EQU 0x9000
+    VBE_INFO EQU 0xC500
+    ROOT_DIR_STORE EQU 0xA500
+    PROGLOADER_STORE EQU 0xC100 
+
+    FUNC_DISPLAY_STRING EQU 0x500
+    FUNC_READ_CLUSTER EQU 0x500 + 2
 
     MOV AX, VBE_INFO / 16; 
     MOV ES, AX
@@ -31,28 +35,44 @@ ORG 0x8200  ;引导器加载的后面的扇区的地址
     MOV BX, 0x4118 ; 1024x768x16M 0x4000 | 0x118 (启用Linear FrameBuffer)
     INT 0x10
     
-    ; 拷贝512字节的结构体到VBE_INFO处
-    ; MOV AX, ES
-    ; MOV DS, AX
-    ; MOV AX, DI
-    ; MOV SI, AX
-    ; MOV AX, VBE_INFO / 16 ; 0x8218
-    ; MOV DS, AX
-    ; MOV SI, 0
-
-    ; MOV AX, [VBE_INFO]
-    ; SHR AX, 4 ;
-    ; MOV ES, AX
-    ; XOR DI, DI ; 清理出来ES:DI的地址
-    
-    ; MOV CX, 512
-    ; CLD ; 0x822d
-    ; REP MOVSB ; 拷贝512字节的结构体 
-
     ;获取指示灯状态
     ; MOV AH, 0x02
     ; INT 0x16
     ; MOV BYTE [LED_STATE_STORE], AL
+
+    ; 开始在根目录下翻KERNEL.BIN
+    
+;     SUB SP, 2
+;     MOV WORD [ESP], 0; 循环计数器
+; scan:
+;     INC WORD [ESP]
+;     CMP BYTE [EAX + 11], 0x20 
+;     JNE scan_continue; 非目录，扫下一个
+
+;     MOV BX, 0
+;     MOV ES, BX
+;     MOV DS, BX
+;     ; 文件名串
+;     MOV DI, AX
+;     ; 目标串
+;     MOV SI, KERNEL_FILENAME
+;     ; 串长
+;     MOV CX, 11
+;     ; JMP $
+;     CLD
+;     REP CMPSB
+;     JCXZ found_that
+
+; scan_continue:
+;     CMP WORD [ESP], 224
+;     JE no_progloader_found
+;     ADD DWORD EAX, 32
+;     JMP scan
+
+; no_progloader_found:
+;     MOV SI, FILE_NOT_FOUND
+;     CALL display_string
+;     JMP $
 
 
     MOV		AL, 0xff
@@ -78,11 +98,12 @@ ORG 0x8200  ;引导器加载的后面的扇区的地址
     OR		EAX, 0x00000001	
     MOV		CR0, EAX ; 把CR0的bit0改成1，CR0具体有什么，见参考资料 0x825b
     
-    JMP DWORD 3<<3:flush_pipeline ; 0x8262
+    JMP DWORD 3<<3:flush_pipeline ; 0xc14a
 [BITS 32]
 flush_pipeline:
+    ; 这里就到了保护模式了
     ; 设置栈
-    MOV     ESP, 0x000ffff0 
+    MOV     ESP, 0x000ffff0  ; 0xc152
     ; 刷新流水线
     MOV		AX, 1<<3		;  可读写不可执行32位数据段
     MOV		DS, AX          ; 
@@ -92,42 +113,42 @@ flush_pipeline:
     MOV     AX, 5<<3
     MOV		SS, AX          
 
-    ; 拷贝C程序数据到代码段
-    MOV     AX, 4<<3        ; 全局可读写段
-    MOV     DS, AX          ; 
-    MOV		ESI, cprog
-    MOV		EDI, CODE_SEGMENT ; CODE_SEGMENT = 0x280000
-    MOV		ECX, 512*1024/4 ; 0x8291
-    CALL	memcpy4byte
-    ; 拷贝bootloader
-    MOV     ESI, 0x7c00
-    MOV     EDI, DISK_CACHE
-    MOV     ECX, 512/4 ; bootloader有512个字节
-    CALL    memcpy4byte
-    ; 拷贝除了bootloader之外的扇区
-    MOV     ESI, 0x8200
-    MOV     EDI, DISK_CACHE + 512
-    XOR     ECX, ECX    ; 0x82b6
-    MOV     CL, BYTE [CYLS_STORE]
-    IMUL    ECX, 18 * 2 ; 一共18 * 2 * [CYLS_STORE]个扇区
-    SUB     ECX, 1; 扣掉启动扇区
-    SHR     ECX, 2; 除掉4
-    CALL    memcpy4byte
+    ; ; 拷贝C程序数据到代码段
+    ; MOV     AX, 4<<3        ; 全局可读写段
+    ; MOV     DS, AX          ; 
+    ; MOV		ESI, cprog
+    ; MOV		EDI, CODE_SEGMENT ; CODE_SEGMENT = 0x280000
+    ; MOV		ECX, 512*1024/4 ; 0xc191
+    ; CALL	memcpy4byte
+    ; ; 拷贝bootloader
+    ; MOV     ESI, 0x7c00
+    ; MOV     EDI, DISK_CACHE
+    ; MOV     ECX, 512/4 ; bootloader有512个字节
+    ; CALL    memcpy4byte
+    ; ; 拷贝除了bootloader之外的扇区
+    ; MOV     ESI, 0xc100
+    ; MOV     EDI, DISK_CACHE + 512
+    ; XOR     ECX, ECX    ; 0xc1b6
+    ; MOV     CL, BYTE [CYLS_STORE]
+    ; IMUL    ECX, 18 * 2 ; 一共18 * 2 * [CYLS_STORE]个扇区
+    ; SUB     ECX, 1; 扣掉启动扇区
+    ; SHR     ECX, 2; 除掉4
+    ; CALL    memcpy4byte
 
     
     ; 设置一会要用的数据段寄存器
-    MOV     AX, 2<<3 ; C程序放的段，可执行; 0x82cf
+    MOV     AX, 2<<3 ; C程序放的段，可执行; 0xc183
     MOV     DS, AX
     ; 获取主函数地址偏移
     MOV     ECX, [DS:0]
     ADD     ECX, 4  ; 地址偏移不包括前四个字节
     MOV     EAX, 2<<3
-    PUSH    AX  ; 0x82e4 
-    PUSH    CX
+    PUSH    AX  ; 0xc1e4 
+    PUSH    ECX
     MOV     AX, 1<<3
     MOV     DS, AX
-    ; JMP FAR [SS:ESP]  ; 0x82e8
-    JMP DWORD 2<<3:0x36
+    JMP FAR [SS:ESP]  ; 0xc1a1
+    ; JMP DWORD 2<<3:0x36
 
 wait_for_keyword_out:
     ; 等待IOPort 0x64清空
@@ -135,16 +156,16 @@ wait_for_keyword_out:
     AND AL, 0x02
     JNZ wait_for_keyword_out
     RET
-memcpy4byte:
-    ; 以4byte为单位拷贝内存
-    ; ESI - 源地址; EDI - 目标地址; ECX - 传输长度
-    MOV		EAX, [ESI]
-    ADD		ESI, 4
-    MOV		[EDI], EAX
-    ADD		EDI, 4
-    SUB		ECX, 1 
-    JNZ		memcpy4byte
-    RET
+; memcpy4byte:
+;     ; 以4byte为单位拷贝内存
+;     ; ESI - 源地址; EDI - 目标地址; ECX - 传输长度
+;     MOV		EAX, [ESI]
+;     ADD		ESI, 4
+;     MOV		[EDI], EAX
+;     ADD		EDI, 4
+;     SUB		ECX, 1 
+;     JNZ		memcpy4byte
+;     RET
 
     ALIGNB	16, DB 0x00 ;接下来的地址对齐到16字节
 GDT_START:
@@ -163,5 +184,10 @@ GDTR:
 
     ALIGNB	16, DB 0x00
 
-TIMES 512 - ($ - $$) DB 0x00
+KERNEL_FILENAME:
+    DB "KERNEL",0x00,0x00
+    DB "BIN"
+
+TIMES 512*2 - ($ - $$) - 4 DB 0x00
+DB 0xCA,0xFE,0xBA,0xBE
 cprog: ;从第三个扇区开始是C程序了

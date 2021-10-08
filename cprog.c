@@ -8,31 +8,29 @@ void write_pixel_at(int x, int y, uint32 pix) {
     uint32* offset = (uint32*)(y * vbe_info->pitch + x * (vbe_info->bpp / 8) +
                                vbe_info->framebuffer);
     *offset = pix;
-    // write_global_uint32(offset, pix);
 }
 
-// static uint32 seed = 0;
-// uint32 rand() {
-//     seed = (seed * seed + 2552) % 8828636;
-//     return seed;
-// }
 void MyMain() {
-    // seed = 23333;
-    const int SECTION_COUNT = 32;
-    int sectionHeight = vbe_info->height / SECTION_COUNT;
-    int seccolors[] = {0xffff00, 0xff00ff, 0x00ffff};
-    for (int a = 0; a < SECTION_COUNT; a++) {
-        for (int k = 0; k < SECTION_COUNT; k++) {
-            for (int i = a * vbe_info->width / SECTION_COUNT;
-                 i < (a + 1) * vbe_info->width / SECTION_COUNT; i++) {
-                for (int j = k * sectionHeight; j < (k + 1) * sectionHeight;
-                     j++) {
-                    // 从右到左压栈
-                    write_pixel_at(i, j, seccolors[(a + k) % 3]);
-                }
-            }
+    for (int i = 0; i < vbe_info->width; i++) {
+        for (int j = 0; j < vbe_info->height; j++) {
+            write_pixel_at(i, j, 0xff0000);
         }
     }
+    // const int SECTION_COUNT = 32;
+    // int sectionHeight = vbe_info->height / SECTION_COUNT;
+    // int seccolors[] = {0xffff00, 0xff00ff, 0x00ffff};
+    // for (int a = 0; a < SECTION_COUNT; a++) {
+    //     for (int k = 0; k < SECTION_COUNT; k++) {
+    //         for (int i = a * vbe_info->width / SECTION_COUNT;
+    //              i < (a + 1) * vbe_info->width / SECTION_COUNT; i++) {
+    //             for (int j = k * sectionHeight; j < (k + 1) * sectionHeight;
+    //                  j++) {
+    //                 // 从右到左压栈
+    //                 write_pixel_at(i, j, seccolors[(a + k) % 3]);
+    //             }
+    //         }
+    //     }
+    // }
 
     while (true) {
         io_halt();
