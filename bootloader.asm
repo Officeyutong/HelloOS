@@ -56,9 +56,15 @@ main:
     FUNC_READ_CLUSTER EQU 0x500 + 2
     FUNC_FIND_FILE EQU 0x500 + 4
 
+    VAR_MESSAGE_PREFIX EQU 0x600; 2byte
+    VAR_KERNEL_SIZE EQU 0x600 + 2 ; 4byte
+    VAR_LAST_SIZE EQU 0x600 + 2 + 4 ; 4byte
+    VAR_LED_STATE_STORE EQU 0x600 + 8; 1byte 键盘LED灯状态的存储地址
+
     MOV WORD [FUNC_DISPLAY_STRING], display_string
     MOV WORD [FUNC_READ_CLUSTER], read_cluster
     MOV WORD [FUNC_FIND_FILE], find_file
+    ; MOV WORD [VAR_MESSAGE_PREFIX], MESSAGE_PREFIX
     ; 检查是否支持LBA
 
     ; MOV AH, 0x41
@@ -118,14 +124,16 @@ LBA:
         CALL display_string
         JMP $
     found_the_file:
+
     MOV SI, DI
+    
     MOV AX, PROGLOADER_STORE
     MOV DI, AX
-    ; MOV WORD AX, [ESP + 2]
-    ; MOV WORD [ESP], AX
-    ; MOV WORD [ESP + 2], PROGLOADER_STORE
+    
+    MOV AX, 0
+    MOV ES, AX
     CALL read_cluster 
-    JMP PROGLOADER_STORE
+    JMP PROGLOADER_STORE ; 0x7ccf
 ; 从根目录寻找文件
 ; SI 文件名地址, 2 byte
 ; OUT DI: 簇号, 2byte (0xFFFF)表示未找到
@@ -139,6 +147,9 @@ scan:
     INC WORD [ESP]
     CMP BYTE [EAX + 11], 0x20 
     JNE scan_continue; 非目录，扫下一个
+
+    MOV EBX, [EAX + 28]
+    MOV [VAR_LAST_SIZE], EBX
 
     MOV BX, 0
     MOV ES, BX
@@ -172,17 +183,19 @@ scan_exit:
 
 ; 读取文件，保存到指定地址
 ;       SI: 簇号, 2 byte
-;       DI: 缓冲地址 , 2byte
+;       ES:DI: 缓冲地址 , 2byte
 read_cluster:
     PUSH DI
     PUSH SI
-    XOR ECX, ECX
+    XOR ECX, ECX; 0x7d25
 read_next_cluster:
-    MOV WORD BX, [ESP] ; 0x7d25
+    MOV WORD BX, [ESP] 
     ; 当前簇ID在[ESP]
     MOV WORD [BLOCK_COUNT], 1 ; 一个扇区
-    MOV AX, [ESP + 2] ; 目标地址
-    MOV WORD [DEST_MEMORY_ADDR], AX
+    ; MOV AX, [ESP + 2] ; 目标地址
+    MOV WORD [DEST_MEMORY_ADDR], DI
+    MOV WORD [DEST_MEMORY_ADDR + 2], ES
+    
     MOV CX, BX
     ; 加上扇区偏移
     ADD CX, 31
@@ -192,7 +205,7 @@ read_next_cluster:
     MOV SI, LBA_READ_STRUCT
 
     MOV AH, 0x42
-    MOV DL, 0x80
+    MOV DL, 0x80 ; 0x7d4e
     INT 0x13 
 
     ; 尝试读下一个簇号
@@ -209,7 +222,7 @@ read_next_cluster:
     ; x+floor(x/2) ?  
     ; 不管奇偶都从x+floor(x/2)读一个WORD
     ; 偶数与0xfff位与，奇数右移4位
-    MOV AX, [ESP] ; 0x7d4f
+    MOV AX, [ESP] ; 0x7d52
     MOV BX, AX
     SHR BX, 1
     IMUL BX, 3; BX = 3*floow(AX/3)
@@ -217,7 +230,7 @@ read_next_cluster:
     AND DX, 1
     ; XOR DX, 1 ; DX = AX % 2
     ADD BX, DX
-    MOV CX, [BX + FAT_STORE] ; 0x7d61
+    MOV CX, [BX + FAT_STORE] ; 0x7d64
 
     ; MOV AX, [ESP]
     ; AND AX, 1
@@ -235,9 +248,12 @@ read_next_cluster:
     
     
     MOV [ESP], CX ; 0x7d77
-    MOV AX, [ESP + 2]
-    ADD AX, 512
-    MOV [ESP + 2], AX
+    ; MOV AX, [ESP + 2]
+    ; ADD AX, 512
+    ; MOV [ESP + 2], AX
+    MOV AX, ES
+    ADD AX, 512/16
+    MOV ES, AX
     JMP read_next_cluster
 read_cluster_end:
     ADD ESP, 4
@@ -267,12 +283,12 @@ read_error:
 ;     RET
 
 display_string:
-    PUSH SI
-    MOV SI, BOOTLOADER_PREFIX
-    CALL display_string_raw
-    POP SI
-    CALL display_string_raw
-    RET
+    ; PUSH SI
+    ; MOV SI, MESSAGE_PREFIX
+    ; CALL display_string_raw
+    ; POP SI
+    ; CALL display_string_raw
+    ; RET
 display_string_raw: ;显示字符串，SI里存地址，zero-terminated
     MOV AL,[SI]; 读一个字符
     CMP AL, 0
@@ -288,9 +304,9 @@ end:
 
 
 ;字符串常量
-BOOTLOADER_PREFIX:
-    DB "BOOTLDR: "
-    DB 0x00
+; MESSAGE_PREFIX:
+    ; DB "BOOTLOADER:"
+    ; DB 0x00
 ; UNSUPPORTED:
 ;     DB "This FXXKING shit DOES NOT support LBA!"
 ;     DB 0x0D,0x0A
