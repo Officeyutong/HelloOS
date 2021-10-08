@@ -1,0 +1,16 @@
+help/
+.vscode/
+helloos.img
+empty.img
+helloos.elf
+cprog.S
+cprog.asm
+*.o
+*.bin
+bootloader.elf
+cprog.elf
+out.txt
+*-dump
+a.exe
+dump.txt
+cprog-dump.txt
