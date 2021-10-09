@@ -10,18 +10,23 @@ progload.bin: progloader.bin
 	cp progloader.bin progload.bin
 asmfunc.o: asmfunc.asm
 	nasm asmfunc.asm -f elf32 -o asmfunc.o
-cprog.o: cprog.c
-	gcc -m32 -march=i386 -ffreestanding -mpreferred-stack-boundary=2 -fno-pic -fno-pie -c cprog.c -Os -o cprog.o
-cprog.bin: cprog.o asmfunc.o
-	ld -m elf_i386 -N cprog.o asmfunc.o --Ttext 0x00 --oformat=binary -o cprog.bin
-cprog.elf: cprog.o asmfunc.o
-	ld -m elf_i386 -N cprog.o asmfunc.o --Ttext 0x00 -o cprog.elf
-cprog-dump.txt: cprog.elf
-	objdump -d cprog.elf > cprog-dump.txt
-cprog_with_start.bin: cprog.elf
-	python3 make_wrapped_bin.py cprog.elf cprog_with_start.bin
-kernel.bin: cprog_with_start.bin
-	cp cprog_with_start.bin kernel.bin
+ckernel.o: ckernel.c
+	gcc -m32 -march=i386 -ffreestanding -mpreferred-stack-boundary=2 -fno-pic -fno-pie -c ckernel.c -o ckernel.o
+kernel.bin: ckernel.o asmfunc.o kernel-linker.ld
+	ld --no-eh-frame-hdr -m elf_i386 --oformat binary -T kernel-linker.ld ckernel.o asmfunc.o -o kernel.bin
+kernel.elf: ckernel.o asmfunc.o kernel-linker.ld
+	ld --no-eh-frame-hdr -m elf_i386 --oformat elf32-i386 -T kernel-linker.ld ckernel.o asmfunc.o -o kernel.elf
+kernel-dump-text.txt: kernel.elf
+	objdump -j kernel_text -d kernel.elf > kernel-dump-text.txt
+kernel-dump-data.txt: kernel.elf
+	objdump -j kernel_data -d kernel.elf > kernel-dump-data.txt
+kernel-dump-header.txt: kernel.elf
+	objdump -h kernel.elf > kernel-dump-header.txt
+kernel-dump: kernel-dump-text.txt kernel-dump-data.txt kernel-dump-header.txt
+	# nothing  
+kernel-dump.txt: kernel.elf
+	objdump -d kernel.elf > kernel.txt
+
 helloos-empty-fat12.img: bootloader.bin
 	dd if=/dev/zero of=helloos-empty-fat12.img bs=512 count=2880
 	dd if=bootloader.bin ibs=512 of=helloos-empty-fat12.img count=1 seek=0 conv=notrunc
@@ -30,11 +35,11 @@ helloos-fat12.img: helloos-empty-fat12.img progload.bin kernel.bin
 	mcopy -i helloos-fat12.img progload.bin ::
 	mcopy -i helloos-fat12.img kernel.bin ::
 	
-helloos.img: bootloader.bin progloader.bin cprog_with_start.bin
-	dd if=/dev/zero of=helloos.img bs=512 count=2880
-	dd if=bootloader.bin ibs=512 of=helloos.img count=1 seek=0 conv=notrunc
-	dd if=progloader.bin ibs=512 of=helloos.img count=1 seek=1 conv=notrunc
-	dd if=cprog_with_start.bin ibs=512 of=helloos.img count=1 seek=2 conv=notrunc
+# helloos.img: bootloader.bin progloader.bin cprog_with_start.bin
+# 	dd if=/dev/zero of=helloos.img bs=512 count=2880
+# 	dd if=bootloader.bin ibs=512 of=helloos.img count=1 seek=0 conv=notrunc
+# 	dd if=progloader.bin ibs=512 of=helloos.img count=1 seek=1 conv=notrunc
+# 	dd if=cprog_with_start.bin ibs=512 of=helloos.img count=1 seek=2 conv=notrunc
 	
 runx: helloos-fat12.img
 	qemu-system-i386.exe -m 512 -hda helloos-fat12.img -monitor telnet:127.0.0.1:2001,server,nowait
@@ -50,9 +55,9 @@ run-gdb:
 	gdb \
 	-ex 'target remote localhost:1234' \
 	-ex 'layout regs' \
-	-ex 'break *0x7c00' \
-	-ex 'set architecture i8086' \
-	-ex 'set tdesc filename gdb/target.xml' 
+	-ex 'break *0x7c00' 
+	# -ex 'set architecture i8086' \
+	# -ex 'set tdesc filename gdb/target.xml' 
 	
 nasm-dump: bootloader.asm
 	nasm bootloader.asm -f bin -o bootloader-nasm.bin	
@@ -77,3 +82,4 @@ clean:
 	$(DEL) cprog-dump.txt
 	$(DEL) helloos-empty-fat12.img
 	$(DEL) helloos-fat12.img
+	$(DEL) kernel-dump-*.txt

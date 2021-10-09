@@ -12,13 +12,10 @@ ORG 0xC100  ;引导器加载的后面的扇区的地址
 
 
 ; 保护模式内核
+; 代码 - DATA - RODATA - BSS          
+; 0x28 0000 ~ 0x37 ffff, 偏移0x0,0x80000,512KB 1M整, 256个4K页
 ; 栈            
 ; 0x38 0000 ~ 0x47 ffff, 地址偏移0xffff0
-; 代码          
-; 0x28 0000 ~ 0x2f ffff, 偏移0x0
-; 全局数据段    
-; 0x30 0000 ~ 0x37 ffff, 偏移0x0        
-
 [BITS 16]
     CYLS_STORE EQU 0x0ff0; 读入柱面数的存储地址
 
@@ -40,13 +37,18 @@ ORG 0xC100  ;引导器加载的后面的扇区的地址
     VAR_LAST_SIZE EQU 0x600 + 2 + 4 ; 4byte
     VAR_LED_STATE_STORE EQU 0x600 + 8; 1byte 键盘LED灯状态的存储地址
 
+    KERNEL_OFFSET EQU 0x280000
+
+    MOV SI, MESSAGE_PROGLOADER_LOADED
+    CALL display_string
+
 
     ; 内核程序整个读进来，塞到0x10000里
 
-    MOV SI, KERNEL_FILENAME
+    MOV SI, KERNEL_FILENAME ; 0xc106
     ; 簇号存在DI里
-    CALL [FUNC_FIND_FILE]
-    CMP DI, 0xffff
+    CALL [FUNC_FIND_FILE] 
+    CMP DI, 0xffff; 0xc10d
     JNE kernel_loaded
 
     MOV SI, MESSAGE_KERNEL_NOT_FOUND
@@ -55,18 +57,18 @@ ORG 0xC100  ;引导器加载的后面的扇区的地址
 
 
 kernel_loaded:
-    MOV EAX, [VAR_LAST_SIZE]
+    MOV EAX, [VAR_LAST_SIZE] ; 0xc11a
     MOV [VAR_KERNEL_SIZE], EAX
     MOV SI, DI
     MOV AX, KERNEL_CACHE
     MOV DI, AX
     MOV AX, 0
     MOV ES, AX
-    CALL [FUNC_READ_CLUSTER]
+    CALL [FUNC_READ_CLUSTER] ; 0xc12e
 
-    JMP $
+    ; JMP $
     
-    MOV AX, VBE_INFO / 16; 
+    MOV AX, VBE_INFO / 16; 0xc132
     MOV ES, AX
     MOV DI, 0
 
@@ -76,12 +78,12 @@ kernel_loaded:
     INT 0x10
 
    ; SuperVGA视频模式
-    MOV AX, 0x4F02 ; 设置SuperVGA视频模式 
+    MOV AX, 0x4F02 ; 设置SuperVGA视频模式 0xc142
     MOV BX, 0x4118 ; 1024x768x16M 0x4000 | 0x118 (启用Linear FrameBuffer)
     INT 0x10
     
     ; 获取指示灯状态
-    MOV AH, 0x02
+    MOV AH, 0x02 ; 0xc14a
     INT 0x16
     MOV BYTE [VAR_LED_STATE_STORE], AL
 
@@ -99,7 +101,7 @@ kernel_loaded:
     OUT		0x60, AL ; 把0xdf写到输出端口，这其中(0xdf) & (0x02) == 1即打开A20 gate
     CALL	wait_for_keyword_out
 
-    XOR     AX, AX
+    XOR     AX, AX ; 0xc16a
     MOV     DS, AX
     LGDT    [GDTR] ;加载GDT表 0x824d
 
@@ -108,35 +110,42 @@ kernel_loaded:
     OR		EAX, 0x00000001	
     MOV		CR0, EAX ; 把CR0的bit0改成1，CR0具体有什么，见参考资料 0x825b
     
-    JMP DWORD 3<<3:flush_pipeline ; 0xc14a
+    JMP DWORD 3<<3:flush_pipeline ; 0xc183
 [BITS 32]
 flush_pipeline:
     ; 这里就到了保护模式了
     ; 设置栈
-    MOV     ESP, 0x000ffff0  ; 0xc152
+    MOV     ESP, 0x47fff0  ; 
     ; 刷新流水线
-    MOV		AX, 1<<3		;  可读写不可执行32位数据段
+    MOV		AX, 4<<3		;  全局不可执行段
     MOV		DS, AX          ; 
     MOV		ES, AX
     MOV		FS, AX
     MOV		GS, AX
-    MOV     AX, 5<<3
+    MOV     AX, 4<<3        ; 保护模式栈
     MOV		SS, AX          
+
+    ; 进行一个内核的拷贝
+    MOV ECX, [VAR_KERNEL_SIZE] ; 0xc1a2
+    MOV ESI, KERNEL_CACHE
+    MOV EDI, KERNEL_OFFSET
+    CLD
+    REP MOVSB
+
 
     
     ; 设置一会要用的数据段寄存器
-    MOV     AX, 2<<3 ; C程序放的段，可执行; 0xc183
-    MOV     DS, AX
+    ; MOV     AX, 2<<3 ; C程序放的段，可执行; 0xc183
+    ; MOV     DS, AX
     ; 获取主函数地址偏移
-    MOV     ECX, [DS:0]
-    ADD     ECX, 4  ; 地址偏移不包括前四个字节
-    MOV     EAX, 2<<3
+    MOV     ECX, [KERNEL_OFFSET + 0] ; 0xc1b5
+    ADD     ECX, 4 + KERNEL_OFFSET  ; 地址偏移不包括前四个字节
+    MOV     EAX, 3<<3; 全局可执行段
     PUSH    AX  ; 0xc1e4 
     PUSH    ECX
-    MOV     AX, 1<<3
-    MOV     DS, AX
-    JMP FAR [SS:ESP]  ; 0xc1a1
-    ; JMP DWORD 2<<3:0x36
+    ; MOV     AX, 1<<3
+    ; MOV     DS, AX
+    JMP FAR [SS:ESP]  ; 0xc1c9
 
 wait_for_keyword_out:
     ; 等待IOPort 0x64清空
@@ -160,7 +169,7 @@ GDT_START:
     ; 这块是GDT表的实际数据
     TIMES	8 DB 0x00			; 第一项必须留空
     DW		0xffff,0x0000,0x9200,0x004f	; 32位不可执行段(实模式内存)，从0x0000 0000 到0x000f ffff
-    DW		0xffff,0x0000,0x9a28,0x0047	; 32位可执行段(C程序用)，从0x0028 0000 到，0x002f ffff 共0x7ffff个字节 
+    DW		0x00ff,0x0000,0x9a28,0x00c0	; 32位可执行段+数据段(C程序用)，从0x0028 0000 到，0x0037 ffff 共0xff个4K页 
     DW      0xffff,0x0000,0x9a00,0x00cf ; 全局可执行段，用于访问全局
     DW      0xffff,0x0000,0x9200,0x00cf ; 全局不可执行段，用于访问全局
     DW      0xffff,0x0000,0x9238,0x004f ; 数据段，用来放栈，从0x38 0000 ~ 0x47 ffff，共0xfffff+1个字节
@@ -189,6 +198,9 @@ MESSAGE_KERNEL_NOT_FOUND:
     DB 0x0D, 0x0A
     DB 0x00
 PROGLOADER_MESSAGE_PREFIX:
-    DB "Kernel loader: ",0x00
+    DB "progloader: ",0x00
+MESSAGE_PROGLOADER_LOADED:
+    DB "Here is the progloader!"
+    DB 0x0D, 0x0A, 0x00
 TIMES 512*2 - ($ - $$) - 4 DB 0x00
 DB 0xCA, 0xFE, 0xBA, 0xBE

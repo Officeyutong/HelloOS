@@ -17,3 +17,6 @@ cprog-dump.txt
 *.img
 helloos-fat12.img
 ghtoken.txt
+kernel-dump-*
+kernel.bin
+kernel.elf
