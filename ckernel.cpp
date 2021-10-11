@@ -1,26 +1,28 @@
 #include "ckernel.h"
+#include <inttypes.h>
 #include "asmfunc.h"
 #include "include/kprintf.h"
 #include "include/string.h"
 /*
 显存通常是0xfd00 0000
 */
-void write_pixel_at(int x, int y, uint32 pix) {
-    uint32* offset = (uint32*)(y * vbe_info->pitch + x * (vbe_info->bpp / 8) +
-                               vbe_info->framebuffer);
+void write_pixel_at(int x, int y, uint32_t pix) {
+    uint32_t* offset =
+        (uint32_t*)(y * vbe_info->pitch + x * (vbe_info->bpp / 8) +
+                    vbe_info->framebuffer);
     *offset = pix;
 }
-static uint32 seed = 0;
+static uint32_t seed = 0;
 
-uint32 rand() {
+uint32_t rand() {
     seed ^= seed << 16;
     seed ^= seed >> 5;
     seed ^= seed << 1;
     return seed;
 }
-uint64 makeTime() {
+uint64_t makeTime() {
     const char* timestamp = __TIMESTAMP__;
-    uint64 r = 0;
+    uint64_t r = 0;
     for (auto c = timestamp; *c; c++)
         r = r * 10 + *c - '0';
     return r;
@@ -46,7 +48,7 @@ void paint_screen() {
     int seccolors[] = {0xffff00, 0xff00ff, 0x00ffff};
     for (int a = 0; a < SECTION_COUNT; a++) {
         for (int k = 0; k < SECTION_COUNT; k++) {
-            uint32 color = seccolors[rand() % 3];
+            uint32_t color = seccolors[rand() % 3];
             for (int i = a * vbe_info->width / SECTION_COUNT;
                  i < (a + 1) * vbe_info->width / SECTION_COUNT; i++) {
                 for (int j = k * sectionHeight; j < (k + 1) * sectionHeight;
@@ -78,43 +80,43 @@ extern "C" void kernel_main() {
 }
 
 void write_segment_entry(void* ptr,
-                         uint32 base,
-                         uint32 limit,
-                         uint8 flags,
-                         uint8 access_byte) {
-    uint64 u = 0;
+                         uint32_t base,
+                         uint32_t limit,
+                         uint8_t flags,
+                         uint8_t access_byte) {
+    uint64_t u = 0;
     u = u | (limit & 0xffff);
-    u = u | ((((uint64)limit) >> 16) & 0xf) << 48;
+    u = u | ((((uint64_t)limit) >> 16) & 0xf) << 48;
 
-    u = u | (((uint64)base & 0xffffff) << 16);
-    u = u | ((((uint64)base >> 24) & 0xff) << 56);
+    u = u | (((uint64_t)base & 0xffffff) << 16);
+    u = u | ((((uint64_t)base >> 24) & 0xff) << 56);
 
-    u = u | (((uint64)access_byte) << 40);
+    u = u | (((uint64_t)access_byte) << 40);
 
-    u = u | (((uint64)flags & 0x0f) << 52);
+    u = u | (((uint64_t)flags & 0x0f) << 52);
 
-    *((uint64*)ptr) = u;
+    *((uint64_t*)ptr) = u;
 }
 
 void write_interrupt_entry(void* ptr,
-                           uint32 offset,
-                           uint16 selector,
-                           uint8 present,
-                           uint8 DPL,
-                           uint8 S,
-                           uint8 gate_type) {
-    uint64 u = 0;
+                           uint32_t offset,
+                           uint16_t selector,
+                           uint8_t present,
+                           uint8_t DPL,
+                           uint8_t S,
+                           uint8_t gate_type) {
+    uint64_t u = 0;
     // 写offset
     u |= (offset & 0xffff);
-    u |= (((uint64)offset >> 16) << 48);
+    u |= (((uint64_t)offset >> 16) << 48);
     // 写selector
     u |= (selector << 16);
     // 拼接type并写进去
-    uint8 type = 0;
+    uint8_t type = 0;
     type |= ((present & 1) << 7);
     type |= ((DPL & 3) << 5);
     type |= ((S & 1) << 4);
     type |= (gate_type & 0x0f);
-    u |= ((uint64)type << 40);
-    *((uint64*)ptr) = u;
+    u |= ((uint64_t)type << 40);
+    *((uint64_t*)ptr) = u;
 }

@@ -1,7 +1,7 @@
 #ifndef _KPRINTF_INCLUDE
 #define _KPRINTF_INCLUDE
 
-#include <stdarg.h>
+#include <cstdarg>
 
 __attribute__((format(printf, 2, 3))) int sprintf(char* buf,
                                                   const char* format,

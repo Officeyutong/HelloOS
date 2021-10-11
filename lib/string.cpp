@@ -1,5 +1,5 @@
 #include "../include/string.h"
-#include "../include/inttypes.h"
+#include <inttypes.h>
 void* memset(void* src, int val, size_t cnt) {
     char* p = (char*)src;
     for (int i = 0; i < cnt; i++) {

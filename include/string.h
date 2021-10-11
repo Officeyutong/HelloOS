@@ -1,6 +1,7 @@
 #ifndef _STRING_INCLUDE
 #define _STRING_INCLUDE
-#include "inttypes.h"
+#include <cinttypes>
+#include <cstddef>
 void* memset(void* src, int val, size_t cnt);
 void* memcpy(void* dest, const void* src, size_t cnt);
 char* strcpy(char* dest, const char* src);

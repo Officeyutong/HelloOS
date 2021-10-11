@@ -1,14 +1,11 @@
-// #include <ctype.h>  //isdigit
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-// #include <stdio.h>   //putchar
-// #include <string.h>  //strcpy, strcat, memcpy, memset
 #include "../include/ctype.h"
-#include "../include/inttypes.h"
 #include "../include/string.h"
-
+#include "../include/mydef.h"
 static char* __int_str(intmax_t i,
                        char b[],
                        int base,
@@ -92,6 +89,7 @@ static size_t displayString(const char* c, int* a, char* buf) {
     //     outcnt += displayCharacter(c[i], a, buf + i);
     // }
     strcat(buf, c);
+    a += strlen(c);
     return outcnt;
 }
 
