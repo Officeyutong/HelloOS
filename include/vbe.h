@@ -1,10 +1,6 @@
-#ifndef _MYDEF
-#define _MYDEF
-typedef unsigned short uint16;
-typedef unsigned int uint32;
-typedef unsigned char uint8;
-typedef unsigned long long uint64;
-
+#ifndef _VBE_INCLUDE
+#define _VBE_INCLUDE
+#include "inttypes.h"
 struct _vbe_mode_info_structure {
     uint16
         attributes;  // deprecated, only bit 7 should be of interest to you, and
@@ -41,8 +37,8 @@ struct _vbe_mode_info_structure {
     uint8 reserved_position;
     uint8 direct_color_attributes;
 
-    uint32 framebuffer;  // physical address of the linear frame buffer; write
-                         // here to draw to the screen
+    void* framebuffer;  // physical address of the linear frame buffer; write
+                        // here to draw to the screen
     uint32 off_screen_mem_off;
     uint16 off_screen_mem_size;  // size of memory in the framebuffer but not
                                  // being displayed on the screen
@@ -50,13 +46,5 @@ struct _vbe_mode_info_structure {
 } __attribute__((packed, aligned(1)));
 
 typedef struct _vbe_mode_info_structure vbe_mode_info_structure;
-
-void write_segment_entry(void* ptr,
-                         uint32 base,
-                         uint32 limit,
-                         uint8 flags,
-                         uint8 access_byte);
-
-#define vbe_info ((vbe_mode_info_structure*)(0xC500))
 
 #endif

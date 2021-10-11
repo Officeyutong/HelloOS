@@ -1,4 +1,4 @@
-DEL = rm -rf 
+include make_def.txt
 
 bootloader.bin: bootloader.asm 
 	nasm -f bin bootloader.asm -o bootloader.bin
@@ -10,18 +10,36 @@ progload.bin: progloader.bin
 	cp progloader.bin progload.bin
 asmfunc.o: asmfunc.asm
 	nasm asmfunc.asm -f elf32 -o asmfunc.o
-ckernel.o: ckernel.c
-	gcc -m32 -march=i386 -ffreestanding -mpreferred-stack-boundary=2 -fno-pic -fno-pie -c ckernel.c -o ckernel.o
-kernel.bin: ckernel.o asmfunc.o kernel-linker.ld
-	ld --no-eh-frame-hdr -m elf_i386 --oformat binary -T kernel-linker.ld ckernel.o asmfunc.o -o kernel.bin
-kernel.elf: ckernel.o asmfunc.o kernel-linker.ld
-	ld --no-eh-frame-hdr -m elf_i386 --oformat elf32-i386 -T kernel-linker.ld ckernel.o asmfunc.o -o kernel.elf
+ckernel.o: ckernel.cpp
+	$(CXX_COMPILE) ckernel.cpp -o ckernel.o
+
+kernel-lib:
+	cd lib && $(MAKE)
+
+kernel.bin: ckernel.o asmfunc.o kernel-lib kernel-linker.ld
+	ld --oformat binary -m elf_i386 -T kernel-linker.ld  \
+		ckernel.o \
+		asmfunc.o \
+		./lib/kprintf.o \
+		./lib/string.o \
+		./lib/ctype.o \
+		-o kernel.bin \
+		-L /usr/lib/gcc/x86_64-linux-gnu/9/32 -l gcc
+kernel.elf: ckernel.o asmfunc.o kernel-lib kernel-linker.ld
+	ld --oformat elf32-i386 -m elf_i386 -T kernel-linker.ld  \
+		ckernel.o \
+		asmfunc.o \
+		./lib/kprintf.o \
+		./lib/string.o \
+		./lib/ctype.o \
+		-o kernel.elf \
+		-L /usr/lib/gcc/x86_64-linux-gnu/9/32 -l gcc
 kernel-dump-text.txt: kernel.elf
-	objdump -j kernel_text -d kernel.elf > kernel-dump-text.txt
+	objdump --demangle -j kernel_text -d kernel.elf > kernel-dump-text.txt
 kernel-dump-data.txt: kernel.elf
-	objdump -j kernel_data -d kernel.elf > kernel-dump-data.txt
+	objdump --demangle -j kernel_data -d kernel.elf > kernel-dump-data.txt
 kernel-dump-header.txt: kernel.elf
-	objdump -h kernel.elf > kernel-dump-header.txt
+	objdump --demangle -h kernel.elf > kernel-dump-header.txt
 kernel-dump: kernel-dump-text.txt kernel-dump-data.txt kernel-dump-header.txt
 	# nothing  
 kernel-dump.txt: kernel.elf
@@ -44,16 +62,11 @@ helloos-fat12.img: helloos-empty-fat12.img progload.bin kernel.bin
 runx: helloos-fat12.img
 	qemu-system-i386.exe -m 512 -hda helloos-fat12.img -monitor telnet:127.0.0.1:2001,server,nowait
 debugx: helloos-fat12.img
-	qemu-system-i386.exe -m 512 -hda helloos-fat12.img -S -s -monitor telnet:127.0.0.1:2001,server,nowait
-run: helloos.img
-	qemu-system-i386.exe -m 512 -hda helloos.img -monitor telnet:127.0.0.1:2001,server,nowait
-	# qemu-system-i386.exe -drive file=helloos.img,format=raw,if=floppy,index=0
-debug: helloos.img
-	qemu-system-i386.exe -hda helloos.img -S -s -monitor telnet:127.0.0.1:2001,server,nowait
-run-gdb:
+	qemu-system-i386.exe -m 512 -hda helloos-fat12.img -S -gdb tcp::2002 -monitor telnet:127.0.0.1:2001,server,nowait
+run-gdb: kernel.elf
 	# 在Windows下开
-	gdb \
-	-ex 'target remote localhost:1234' \
+	gdb kernel.elf \
+	-ex 'target remote 127.0.0.1:2002' \
 	-ex 'layout regs' \
 	-ex 'break *0x7c00' 
 	# -ex 'set architecture i8086' \
@@ -83,3 +96,5 @@ clean:
 	$(DEL) helloos-empty-fat12.img
 	$(DEL) helloos-fat12.img
 	$(DEL) kernel-dump-*.txt
+	$(DEL) kernel.elf
+	cd lib && $(MAKE) clean

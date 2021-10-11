@@ -1,4 +1,6 @@
-GLOBAL io_halt,write_global_uint32
+GLOBAL io_halt
+GLOBAL write_global_uint32
+GLOBAL load_gdt, load_idt
 
 io_halt:
     HLT
@@ -8,20 +10,28 @@ io_halt:
 ;     MOV BYTE AL, [ESP + 8]
 ;     OUT DX, AL
 ;     RET
-write_global_uint32:
-    PUSH EAX
-    PUSH EBX
-    PUSH ECX
-    PUSH EDX
-    MOV DWORD   EAX, [ESP + 4] ; 要写的值
-    MOV DWORD   EBX, [ESP] ; 地址
-    MOV WORD    ECX, DS
-    MOV WORD    EDX, 4<<3
-    MOV WORD    DS, DX
-    MOV DWORD   [DS:EBX], EAX
-    MOV WORD    DS, ECX
-    POP EDX
-    POP ECX
-    POP EBX
-    POP EAX
+
+load_gdt: ; load_gdt(uint16 length, uint32 addr)
+    PUSH EBP
+    MOV EBP, ESP
+    SUB ESP, 6
+    MOV EAX, [EBP + 4 + 4] ; EAX = addr
+    MOV [EBP - 4], EAX
+    MOV DWORD EAX, [EBP + 4 + 8] ; EAX = length
+    MOV [EBP - 6], AX
+    LGDT [EBP - 6]
+    ADD ESP, 6
+    LEAVE
+    RET
+load_idt: ; load_idt(uint16 length, uint32 addr)
+    PUSH EBP
+    MOV EBP, ESP
+    SUB ESP, 6
+    MOV EAX, [EBP + 4 + 4] ; EAX = addr
+    MOV [EBP - 4], EAX
+    MOV DWORD EAX, [EBP + 4 + 8] ; EAX = length
+    MOV [EBP - 6], AX
+    LIDT [EBP - 6]
+    ADD ESP, 6
+    LEAVE
     RET

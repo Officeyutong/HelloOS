@@ -1,0 +1,2 @@
+DEL = rm -rf
+CXX_COMPILE = g++ -m32 -nostdlib -march=i386 -ffreestanding -mpreferred-stack-boundary=2 -fno-pic -fno-pie  -c -Wall -Wextra -fno-exceptions -fno-rtti -Wimplicit-fallthrough=0 -g

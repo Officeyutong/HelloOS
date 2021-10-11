@@ -1,0 +1,20 @@
+保护模式自由内存
+0x0010 0000 ~ 0x00EF FFFF 14MB
+0x00F0 0000 ~ 0x00FF FFFF 不可用
+0x0100 0000 ~ INF
+
+保护模式内存分配表
+
+0x0026 f800 ~ 0x0026 ffff
+IDT, 256*8 byte
+
+0x0027 0000 ~ 0x0027 ffff
+GDT, 8192*8 byte
+
+0x0028 0000 ~ 0x37 ffff
+内核代码，DATA，RODATA，BSS
+共1MB
+
+0x0038 0000 ~ 0x047 ffff
+内核栈, 栈开始于0x47fff0,可用约1M
+
