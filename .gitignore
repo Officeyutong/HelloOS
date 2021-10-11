@@ -20,3 +20,4 @@ ghtoken.txt
 kernel-dump-*
 kernel.bin
 kernel.elf
+a.out
