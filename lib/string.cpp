@@ -22,7 +22,7 @@ void* memcpy(void* dest, const void* src, size_t cnt) {
     //     "rep movsb;" ::""(dest),
     //     ""(src), ""(cnt)
     //     : "esi", "edi", "ecx");
-    // return dest;
+    return dest;
 }
 char* strcpy(char* dest, const char* src) {
     char* p1 = dest;

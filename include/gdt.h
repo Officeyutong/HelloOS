@@ -3,7 +3,7 @@
 #include <cinttypes>
 #define GDT_COUNT ((uint32_t)8192)
 struct GDT {
-    char entry[8][GDT_COUNT];
+    char entry[8];
 } __attribute__((packed, aligned(1)));
 
 void write_segment_entry(void* ptr,

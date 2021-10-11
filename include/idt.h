@@ -5,7 +5,7 @@
 #define IDT_COUNT ((uint32_t)256)
 
 struct IDT {
-    char entry[8][IDT_COUNT];
+    char entry[8];
 } __attribute__((packed, aligned(1)));
 
 void write_interrupt_entry(void* ptr,

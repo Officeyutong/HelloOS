@@ -1,20 +1,12 @@
 #include "ckernel.h"
 #include <inttypes.h>
 #include "asmfunc.h"
+#include "include/display.h"
 #include "include/kprintf.h"
 #include "include/string.h"
-/*
-显存通常是0xfd00 0000
-*/
-void write_pixel_at(int x, int y, uint32_t pix) {
-    uint32_t* offset =
-        (uint32_t*)(y * vbe_info->pitch + x * (vbe_info->bpp / 8) +
-                    vbe_info->framebuffer);
-    *offset = pix;
-}
 static uint32_t seed = 0;
 
-uint32_t rand() {
+static uint32_t rand() {
     seed ^= seed << 16;
     seed ^= seed >> 5;
     seed ^= seed << 1;
@@ -29,7 +21,7 @@ uint64_t makeTime() {
 }
 
 void init_gdt_idt() {
-    for (int i = 0; i < GDT_COUNT; i++)
+    for (int i = GDT_COUNT - 1; i >= 0; i--)
         write_segment_entry(gdt_info + i, 0, 0, 0, 0);
     // write_segment_entry(gdt_info , 0, 0, 0, 0);                  // 0项
     write_segment_entry(gdt_info + 1, 0, 0xfffff, 0x9a, 0x0c);  // 全局可执行

@@ -1,5 +1,7 @@
 include make_def.txt
 
+LINK_FILES = ckernel.o asmfunc.o ./lib/ctype.o ./lib/display.o ./lib/kprintf.o ./lib/string.o
+
 bootloader.bin: bootloader.asm 
 	nasm -f bin bootloader.asm -o bootloader.bin
 	# ld -m elf_i386 -N bootloader.o --Ttext 0x7c00 --oformat binary -o bootloader.bin
@@ -18,20 +20,12 @@ kernel-lib:
 
 kernel.bin: ckernel.o asmfunc.o kernel-lib kernel-linker.ld
 	ld --oformat binary -m elf_i386 -T kernel-linker.ld  \
-		ckernel.o \
-		asmfunc.o \
-		./lib/kprintf.o \
-		./lib/string.o \
-		./lib/ctype.o \
+		$(LINK_FILES) \
 		-o kernel.bin \
 		-L /usr/lib/gcc/x86_64-linux-gnu/9/32 -l gcc
 kernel.elf: ckernel.o asmfunc.o kernel-lib kernel-linker.ld
 	ld --oformat elf32-i386 -m elf_i386 -T kernel-linker.ld  \
-		ckernel.o \
-		asmfunc.o \
-		./lib/kprintf.o \
-		./lib/string.o \
-		./lib/ctype.o \
+		$(LINK_FILES) \
 		-o kernel.elf \
 		-L /usr/lib/gcc/x86_64-linux-gnu/9/32 -l gcc
 kernel-dump-text.txt: kernel.elf
