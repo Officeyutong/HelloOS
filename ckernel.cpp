@@ -1,6 +1,6 @@
 #include "ckernel.h"
 #include <inttypes.h>
-#include "asmfunc.h"
+#include "include/asmfunc.h"
 #include "include/display.h"
 #include "include/kprintf.h"
 #include "include/string.h"
@@ -23,7 +23,7 @@ uint64_t makeTime() {
 }
 
 static void init_gdt_idt() {
-    for (int i = GDT_COUNT - 1; i >= 0; i--)
+    for (int i = 0; i < GDT_COUNT; i++)
         write_segment_entry(gdt_info + i, 0, 0, 0, 0);
     // write_segment_entry(gdt_info , 0, 0, 0, 0);                  // 0项
     write_segment_entry(gdt_info + 1, 0, 0xfffff, 0x9a, 0x0c);  // 全局可执行

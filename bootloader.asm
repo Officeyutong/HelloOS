@@ -26,7 +26,6 @@
     DD 0xCAFEBABE; 卷系列号
     DB "HELLOOS_FAT" ;卷标，11byte
     DB "FAT12", 0, 0, 0; 分区文件系统类型名,8 byte
-    TIMES 18 DB 0x00; 留空字节
 
 ; 0x7E00 ~ 0x7FFFF - 实模式可用内存
 ; 0x500 ~ 0x7BFF - 实模式可用内存

@@ -1,6 +1,10 @@
 include make_def.txt
 
-LINK_FILES = ckernel.o asmfunc.o ./lib/ctype.o ./lib/display.o ./lib/kprintf.o ./lib/string.o
+LINK_FILES = ckernel.o ./lib/asmfunc.o ./lib/ctype.o ./lib/display.o ./lib/kprintf.o ./lib/string.o
+
+
+ascii_font.bin: make_font.py hankaku.txt
+	python3.8 make_font.py hankaku.txt ascii_font.bin
 
 bootloader.bin: bootloader.asm 
 	nasm -f bin bootloader.asm -o bootloader.bin
@@ -10,20 +14,19 @@ progloader.bin: progloader.asm
 	# ld -m elf_i386 -N progloader.o --Ttext 0x8200 --oformat=binary -o progloader.bin
 progload.bin: progloader.bin
 	cp progloader.bin progload.bin
-asmfunc.o: asmfunc.asm
-	nasm asmfunc.asm -f elf32 -o asmfunc.o
+
 ckernel.o: ckernel.cpp
 	$(CXX_COMPILE) ckernel.cpp -o ckernel.o
 
 kernel-lib:
 	cd lib && $(MAKE)
 
-kernel.bin: ckernel.o asmfunc.o kernel-lib kernel-linker.ld
+kernel.bin: ckernel.o kernel-lib kernel-linker.ld
 	ld --oformat binary -m elf_i386 -T kernel-linker.ld  \
 		$(LINK_FILES) \
 		-o kernel.bin \
 		-L /usr/lib/gcc/x86_64-linux-gnu/9/32 -l gcc
-kernel.elf: ckernel.o asmfunc.o kernel-lib kernel-linker.ld
+kernel.elf: ckernel.o kernel-lib kernel-linker.ld
 	ld --oformat elf32-i386 -m elf_i386 -T kernel-linker.ld  \
 		$(LINK_FILES) \
 		-o kernel.elf \
@@ -42,10 +45,12 @@ kernel-dump.txt: kernel.elf
 helloos-empty-fat12.img: bootloader.bin
 	dd if=/dev/zero of=helloos-empty-fat12.img bs=512 count=2880
 	dd if=bootloader.bin ibs=512 of=helloos-empty-fat12.img count=1 seek=0 conv=notrunc
-helloos-fat12.img: helloos-empty-fat12.img progload.bin kernel.bin
+helloos-fat12.img: helloos-empty-fat12.img progload.bin kernel.bin ascii_font.bin
 	cp helloos-empty-fat12.img helloos-fat12.img
 	mcopy -i helloos-fat12.img progload.bin ::
 	mcopy -i helloos-fat12.img kernel.bin ::
+	mcopy -i helloos-fat12.img ascii_font.bin ::
+	
 	
 # helloos.img: bootloader.bin progloader.bin cprog_with_start.bin
 # 	dd if=/dev/zero of=helloos.img bs=512 count=2880
@@ -91,4 +96,5 @@ clean:
 	$(DEL) helloos-fat12.img
 	$(DEL) kernel-dump-*.txt
 	$(DEL) kernel.elf
+	$(DEL) ascii_font.bin
 	cd lib && $(MAKE) clean

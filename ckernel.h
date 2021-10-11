@@ -1,6 +1,7 @@
 #ifndef _MYDEF
 #define _MYDEF
 
+#include "include/ascii_font.h"
 #include "include/boot_meta.h"
 #include "include/gdt.h"
 #include "include/idt.h"
@@ -13,4 +14,6 @@
 
 #define kernel_page_directory ((PageDirectory*)0x26E000)
 #define kernel_page_table_first ((PageTable*)0x26D000)
+#define ascii_font_table ((ASCIIFontTable*)0x26D000)
+
 #endif
