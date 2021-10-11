@@ -29,4 +29,10 @@ struct PageTableEntry {
     uint32_t addr : 20;
 } __attribute__((packed, aligned(1)));
 
+struct PageDirectory {
+    PageDirectoryEntry entries[1024];
+};
+struct PageTable {
+    PageTableEntry entries[1024];
+};
 #endif

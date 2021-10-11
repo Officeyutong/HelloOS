@@ -4,8 +4,10 @@
 #include "include/display.h"
 #include "include/kprintf.h"
 #include "include/string.h"
-static uint32_t seed = 0;
 
+static PageTable* next_page_table = kernel_page_table_first;
+
+static uint32_t seed = 0;
 static uint32_t rand() {
     seed ^= seed << 16;
     seed ^= seed >> 5;
@@ -20,7 +22,7 @@ uint64_t makeTime() {
     return r;
 }
 
-void init_gdt_idt() {
+static void init_gdt_idt() {
     for (int i = GDT_COUNT - 1; i >= 0; i--)
         write_segment_entry(gdt_info + i, 0, 0, 0, 0);
     // write_segment_entry(gdt_info , 0, 0, 0, 0);                  // 0项
@@ -32,7 +34,45 @@ void init_gdt_idt() {
         write_interrupt_entry(idt_info + i, 0, 0, 0, 0, 0, 0);
     load_idt(8 * IDT_COUNT - 1, idt_info);
 }
-
+// 处理begin~end的内核内存页映射
+static void map_memory_page(uint32_t begin, uint32_t end) {
+    for (uint32_t i = begin; i <= end; i++) {
+        uint32_t dir_index = i / 1024;
+        uint32_t table_index = i % 1024;
+        auto& entry = kernel_page_directory->entries[dir_index];
+        if (!entry.present) {
+            PageTable* table_addr = next_page_table--;
+            entry.pagetable_addr = ((uint32_t)table_addr) / 4096;
+            entry.cache_disabled = 1;
+            entry.present = 1;
+            entry.read_or_wrte = 1;
+            entry.zerobit = 0;
+            entry.read_or_wrte = 1;
+            entry.cache_disabled = 1;
+            entry.user_or_supervisor = 0;
+        }
+        auto& table_ref = *((PageTable*)(entry.pagetable_addr * 4096));
+        auto& table_entry_ref = table_ref.entries[table_index];
+        table_entry_ref.addr = i;
+        table_entry_ref.cache_disabled = 1;
+        table_entry_ref.global = 0;
+        table_entry_ref.present = 1;
+        table_entry_ref.read_or_wrte = 1;
+        table_entry_ref.user_or_supervisor = 0;
+        table_entry_ref.zerobit = 0;
+    }
+}
+static void init_paging() {
+    map_memory_page(0, 0xff);
+    map_memory_page(0x260, 0x4ff);
+    map_memory_page(0xfd000, 0xfd24f);
+    asm("movl %0, %%eax;"
+        "movl %%eax, %%cr3;"
+        "movl %%cr0, %%eax;"
+        "or $0x80000001, %%eax;"
+        "movl %%eax, %%cr0;" ::""(kernel_page_directory)
+        : "eax");
+}
 void paint_screen() {
     seed = makeTime();
     const int SECTION_COUNT = 32;
@@ -54,17 +94,9 @@ void paint_screen() {
 }
 
 extern "C" void kernel_main() {
-    // write_pixel_at(0, 0, 0xff);
     init_gdt_idt();
+    init_paging();
     paint_screen();
-    char s1[100] = "abcdefg";
-    char s2[100] = "|bcdefgh";
-    char buf[100];
-    // int arr[2] = {0, 0};
-    // arr[0] = strlen(s1);
-    // arr[1] = strlen(s2);
-    // strcat(s1, s2);
-    sprintf(buf, "%d,%s", 123, "qwq");
     while (true) {
         __asm__("hlt");
     }
