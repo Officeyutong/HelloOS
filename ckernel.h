@@ -7,8 +7,9 @@
 #include "include/idt.h"
 #include "include/paging.h"
 #include "include/vbe.h"
-#define vbe_info ((vbe_mode_info_structure*)(0xC500))
+#define vbe_info ((vbe_mode_info_structure*)(0xE600))
 #define boot_meta ((boot_meta_info_struct*)(0x0600))
+#define boot_sector ((FAT12BootSector*)0x7C00);
 #define gdt_info ((GDT*)0x270000)
 #define idt_info ((IDT*)0x26F800)
 

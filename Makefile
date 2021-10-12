@@ -6,9 +6,7 @@ LINK_FILES = ckernel.o ./lib/asmfunc.o ./lib/ctype.o ./lib/display.o ./lib/kprin
 ascii_font.bin: make_font.py hankaku.txt
 	python3.8 make_font.py hankaku.txt ascii_font.bin
 
-bootloader.bin: bootloader.asm 
-	nasm -f bin bootloader.asm -o bootloader.bin
-	# ld -m elf_i386 -N bootloader.o --Ttext 0x7c00 --oformat binary -o bootloader.bin
+
 progloader.bin: progloader.asm
 	nasm progloader.asm -f bin -o progloader.bin
 	# ld -m elf_i386 -N progloader.o --Ttext 0x8200 --oformat=binary -o progloader.bin
@@ -20,6 +18,9 @@ ckernel.o: ckernel.cpp
 
 kernel-lib:
 	cd lib && $(MAKE)
+
+boot-program:
+	cd boot && $(MAKE)
 
 kernel.bin: ckernel.o kernel-lib kernel-linker.ld
 	ld --oformat binary -m elf_i386 -T kernel-linker.ld  \
@@ -42,14 +43,21 @@ kernel-dump: kernel-dump-text.txt kernel-dump-data.txt kernel-dump-header.txt
 kernel-dump.txt: kernel.elf
 	objdump -d kernel.elf > kernel.txt
 
-helloos-empty-fat12.img: bootloader.bin
-	dd if=/dev/zero of=helloos-empty-fat12.img bs=512 count=2880
-	dd if=bootloader.bin ibs=512 of=helloos-empty-fat12.img count=1 seek=0 conv=notrunc
-helloos-fat12.img: helloos-empty-fat12.img progload.bin kernel.bin ascii_font.bin
-	cp helloos-empty-fat12.img helloos-fat12.img
-	mcopy -i helloos-fat12.img progload.bin ::
-	mcopy -i helloos-fat12.img kernel.bin ::
-	mcopy -i helloos-fat12.img ascii_font.bin ::
+helloos-empty-fat32.img: boot-program
+	dd if=/dev/zero of=helloos-empty-fat32.img bs=512 count=32768
+	dd if=./boot/bootloader.bin ibs=512 of=helloos-empty-fat32.img count=1 seek=0 conv=notrunc
+	dd if=./boot/bootloader-ext.bin ibs=512 of=helloos-empty-fat32.img count=2 seek=1 conv=notrunc
+	dd if=./boot/fsinfo.bin ibs=512 of=helloos-empty-fat32.img count=1 seek=3 conv=notrunc
+	dd if=./boot/empty_fat32.bin ibs=512 of=helloos-empty-fat32.img count=1 seek=4 conv=notrunc
+	dd if=./boot/empty_fat32.bin ibs=512 of=helloos-empty-fat32.img count=1 seek=8196 conv=notrunc
+	
+	
+	
+helloos-fat32.img: helloos-empty-fat32.img progload.bin kernel.bin ascii_font.bin
+	cp helloos-empty-fat32.img helloos-fat32.img
+	mcopy -i helloos-fat32.img progload.bin ::
+	mcopy -i helloos-fat32.img kernel.bin ::
+	mcopy -i helloos-fat32.img ascii_font.bin ::
 	
 	
 # helloos.img: bootloader.bin progloader.bin cprog_with_start.bin
@@ -58,18 +66,16 @@ helloos-fat12.img: helloos-empty-fat12.img progload.bin kernel.bin ascii_font.bi
 # 	dd if=progloader.bin ibs=512 of=helloos.img count=1 seek=1 conv=notrunc
 # 	dd if=cprog_with_start.bin ibs=512 of=helloos.img count=1 seek=2 conv=notrunc
 	
-runx: helloos-fat12.img
-	qemu-system-i386.exe -m 512 -hda helloos-fat12.img -monitor telnet:127.0.0.1:2001,server,nowait
-debugx: helloos-fat12.img
-	qemu-system-i386.exe -m 512 -hda helloos-fat12.img -S -gdb tcp::2002 -monitor telnet:127.0.0.1:2001,server,nowait
+runx: helloos-fat32.img
+	qemu-system-i386.exe -m 512 -hda helloos-fat32.img -monitor telnet:127.0.0.1:2001,server,nowait
+debugx: helloos-fat32.img
+	qemu-system-i386.exe -m 512 -hda helloos-fat32.img -S -gdb tcp::2002 -monitor telnet:127.0.0.1:2001,server,nowait
 run-gdb: kernel.elf
-	# 在Windows下开
 	gdb kernel.elf \
 	-ex 'target remote 127.0.0.1:2002' \
-	-ex 'layout regs' \
-	-ex 'break *0x7c00' 
-	# -ex 'set architecture i8086' \
-	# -ex 'set tdesc filename gdb/target.xml' 
+	-ex 'break *0x7c00' \
+	-ex 'set architecture i8086' \
+	-ex 'set tdesc filename gdb/target.xml' 
 	
 nasm-dump: bootloader.asm
 	nasm bootloader.asm -f bin -o bootloader-nasm.bin	
@@ -92,9 +98,11 @@ clean:
 	$(DEL) a.exe
 	$(DEL) dump.txt
 	$(DEL) cprog-dump.txt
-	$(DEL) helloos-empty-fat12.img
-	$(DEL) helloos-fat12.img
+	$(DEL) helloos-empty-fat32.img
+	$(DEL) helloos-fat32.img
 	$(DEL) kernel-dump-*.txt
 	$(DEL) kernel.elf
 	$(DEL) ascii_font.bin
+
 	cd lib && $(MAKE) clean
+	cd boot && $(MAKE) clean

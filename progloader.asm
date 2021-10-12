@@ -1,14 +1,16 @@
-ORG 0xC100  ;引导器加载的后面的扇区的地址
+ORG 0xC600  ;引导器加载的后面的扇区的地址
 
 ; 0x7E00 ~ 0x7FFFF - 实模式可用内存
 ; 0x500 ~ 0x7BFF - 实模式可用内存
 
 ; 实模式栈放在 0x8000
-; FAT表放在 0x8200~0xA5FF (512*18 byte，读两张)
-; 根目录表放在 0xA600~0xC0FF(512*14 byte)
-; progloader放在 0xC100~0xC4FF (1024字节)
-; VBE_INFO      0xC500~C5FF
-; 内核缓存: 0xC600~...
+; 扩展引导器放在 0x8100 ~ 0x84FF (1024byte)
+; FAT表遍历缓存放在 0x8500 ~ 0x86FF (512Byte)
+
+; 根目录表放在 0xA600~0xC5FF(512*16 byte)
+; progload放在 0xC600 ~ 0xE5FF ; 最多8K
+; VBE_INFO      0xE600~E6FF
+; 内核缓存: 0xE700~...0x7FFFFF 0x71900 (最多454.25K)
 
 
 ; 保护模式内核
@@ -23,19 +25,28 @@ ORG 0xC100  ;引导器加载的后面的扇区的地址
     DISK_CACHE EQU 0x00100000; 磁盘数据缓存
     VBE_INFO EQU 0xC500 ; 显示信息
 
-    ROOT_DIR_STORE EQU 0xA500 ; 根目录数据
-    PROGLOADER_STORE EQU 0xC100 ; 内核加载器
-
-    KERNEL_CACHE EQU 0xC600
+    ROOT_DIR_STORE EQU 0xA600
+    PROGLOADER_STORE EQU 0xC600 ; ProgLoader地址
+    FAT_ACCESS_CACHE EQU 0x8500
 
     FUNC_DISPLAY_STRING EQU 0x500
-    FUNC_READ_CLUSTER EQU 0x500 + 2
+    FUNC_READ_FILE EQU 0x500 + 2
     FUNC_FIND_FILE EQU 0x500 + 4
 
     VAR_MESSAGE_PREFIX EQU 0x600; 2byte
     VAR_KERNEL_SIZE EQU 0x600 + 2 ; 4byte
     VAR_LAST_SIZE EQU 0x600 + 2 + 4 ; 4byte
     VAR_LED_STATE_STORE EQU 0x600 + 8; 1byte 键盘LED灯状态的存储地址
+    VAR_FAT_SIZE EQU 0x600 + 7; 4byte, FAT表长度
+    VAR_FAT_START EQU 0x600 + 11; 2byte, FAT表起始位置
+    VAR_ROOT_ENTRY_START EQU 0x600 + 13; 4byte, 根目录区起始位置
+    VAR_ROOT_ENTRY_SIZE EQU 0x600 + 17; 2byte, 根目录区扇区数
+    VAR_CLUSTER_SIZE_IN_SECTOR EQU 0x600 + 19;1byte 簇大小，扇区
+    VAR_CLUSTER_SIZE_IN_BYTE EQU 0x600 + 20;4byte 簇大小，字节
+    VAR_DATA_START_SECTOR EQU 0x600 + 24; 数据区开始扇区，4byte
+    VAR_ROOT_DIR_ENTRIES EQU 0x600 + 28; 根目录区项数，4byte
+
+    KERNEL_CACHE EQU 0xE700
     KERNEL_OFFSET EQU 0x280000
 
     MOV SI, MESSAGE_PROGLOADER_LOADED
@@ -45,9 +56,9 @@ ORG 0xC100  ;引导器加载的后面的扇区的地址
     ; 内核程序整个读进来，塞到0x10000里
 
     MOV SI, KERNEL_FILENAME ; 0xc106
-    ; 簇号存在DI里
+    ; 簇号存在EDI里
     CALL [FUNC_FIND_FILE] 
-    CMP DI, 0xffff; 0xc10d
+    CMP EDI, 0xffffffff; 0xc10d
     JNE kernel_loaded
 
     MOV SI, MESSAGE_KERNEL_NOT_FOUND
@@ -63,9 +74,8 @@ kernel_loaded:
     MOV DI, AX
     MOV AX, 0
     MOV ES, AX
-    CALL [FUNC_READ_CLUSTER] ; 0xc12e
+    CALL [FUNC_READ_FILE] ; 0xc12e
 
-    ; JMP $
     
     MOV AX, VBE_INFO / 16; 0xc132
     MOV ES, AX

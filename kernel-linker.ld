@@ -22,7 +22,7 @@ SECTIONS
         *(.data)
         *(.rodata)
     }
-    ASSERT(. - 0x280000 <= 0x73a00, "The size of kernel_text + kernel_data can not exceed 0x73a00 (from the limit of real mode)")
+    ASSERT(. - 0x280000 <= 0x71900, "The size of kernel_text + kernel_data can not exceed 0x73a00 (from the limit of real mode)")
 
     kernel_bss ALIGN(8) : {
         *(.bss)

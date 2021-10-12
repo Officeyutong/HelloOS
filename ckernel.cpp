@@ -6,7 +6,8 @@
 #include "include/string.h"
 
 static PageTable* next_page_table = kernel_page_table_first;
-
+static const FAT12BootSector* boot_sector_ref = boot_sector;
+static int val = 0xcafebabe;
 static uint32_t seed = 0;
 static uint32_t rand() {
     seed ^= seed << 16;
@@ -92,11 +93,16 @@ void paint_screen() {
         }
     }
 }
-
+int cnt = 0;
 extern "C" void kernel_main() {
+    // boot_sector_ref =;
+    // const FAT12BootSector& boot_sector_ref = *boot_sector;
     init_gdt_idt();
+    cnt++;
     init_paging();
+    cnt++;
     paint_screen();
+    cnt++;
     while (true) {
         __asm__("hlt");
     }

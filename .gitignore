@@ -21,3 +21,4 @@ kernel-dump-*
 kernel.bin
 kernel.elf
 a.out
+test.py
