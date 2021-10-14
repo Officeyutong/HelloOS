@@ -1,0 +1,22 @@
+name: Makefile CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Install dependencies
+      run: sudo apt install -y mtools python3.8 g++-9 gcc binutils nasm g++-multilib
+      
+      
+    - name: Build it!
+      run: make helloos-fat32.img

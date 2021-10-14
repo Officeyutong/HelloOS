@@ -1,3 +1,3 @@
 # HelloOS
 
-This is an Operatable Shit.
+This is a piece of Operatable Shit.
