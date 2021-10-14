@@ -49,52 +49,52 @@ ORG 0xC600  ;引导器加载的后面的扇区的地址
     KERNEL_CACHE EQU 0xE700
     KERNEL_OFFSET EQU 0x280000
 
-    MOV SI, MESSAGE_PROGLOADER_LOADED
-    CALL display_string
+    MOV     SI, MESSAGE_PROGLOADER_LOADED
+    CALL    display_string
 
 
     ; 内核程序整个读进来，塞到0x10000里
 
-    MOV SI, KERNEL_FILENAME ; 0xc106
+    MOV     SI, KERNEL_FILENAME ; 0xc106
     ; 簇号存在EDI里
-    CALL [FUNC_FIND_FILE] 
-    CMP EDI, 0xffffffff; 0xc10d
-    JNE kernel_loaded
+    CALL    [FUNC_FIND_FILE] 
+    CMP     EDI, 0xffffffff; 0xc10d
+    JNE     kernel_loaded
 
-    MOV SI, MESSAGE_KERNEL_NOT_FOUND
-    CALL display_string
-    JMP $
+    MOV     SI, MESSAGE_KERNEL_NOT_FOUND
+    CALL    display_string
+    JMP     $
 
 
 kernel_loaded:
-    MOV EAX, [VAR_LAST_SIZE] ; 0xc11a
-    MOV [VAR_KERNEL_SIZE], EAX
-    MOV SI, DI
-    MOV AX, KERNEL_CACHE
-    MOV DI, AX
-    MOV AX, 0
-    MOV ES, AX
-    CALL [FUNC_READ_FILE] ; 0xc12e
+    MOV     EAX, [VAR_LAST_SIZE] ; 0xc11a
+    MOV     [VAR_KERNEL_SIZE], EAX
+    MOV     SI, DI
+    MOV     AX, KERNEL_CACHE
+    MOV     DI, AX
+    MOV     AX, 0
+    MOV     ES, AX
+    CALL    [FUNC_READ_FILE] ; 0xc12e
 
     
-    MOV AX, VBE_INFO / 16; 0xc132
-    MOV ES, AX
-    MOV DI, 0
+    MOV     AX, VBE_INFO / 16; 0xc132
+    MOV     ES, AX
+    MOV     DI, 0
 
     ; 获取VBE信息, 输出到ES:DI
-    MOV AX, 0x4F01 ;0x8208
-    MOV CX, 0x0118
-    INT 0x10
+    MOV     AX, 0x4F01 ;0x8208
+    MOV     CX, 0x0118
+    INT     0x10
 
    ; SuperVGA视频模式
-    MOV AX, 0x4F02 ; 设置SuperVGA视频模式 0xc142
-    MOV BX, 0x4118 ; 1024x768x16M 0x4000 | 0x118 (启用Linear FrameBuffer)
-    INT 0x10
+    MOV     AX, 0x4F02 ; 设置SuperVGA视频模式 0xc142
+    MOV     BX, 0x4118 ; 1024x768x16M 0x4000 | 0x118 (启用Linear FrameBuffer)
+    INT     0x10
     
     ; 获取指示灯状态
-    MOV AH, 0x02 ; 0xc14a
-    INT 0x16
-    MOV BYTE [VAR_LED_STATE_STORE], AL
+    MOV     AH, 0x02 ; 0xc14a
+    INT     0x16
+    MOV     BYTE [VAR_LED_STATE_STORE], AL
 
     MOV		AL, 0xff
     OUT		0x21, AL; 0x21是第一块PIC主寄存器的数据端口
@@ -119,7 +119,7 @@ kernel_loaded:
     OR		EAX, 0x00000001	
     MOV		CR0, EAX ; 把CR0的bit0改成1，CR0具体有什么，见参考资料 0x825b
     
-    JMP DWORD 1<<3:flush_pipeline ; 0xc183
+    JMP     DWORD   1<<3:flush_pipeline ; 0xc183
 [BITS 32]
 flush_pipeline:
     ; 这里就到了保护模式了
@@ -135,9 +135,9 @@ flush_pipeline:
     MOV		SS, AX          
 
     ; 进行一个内核的拷贝
-    MOV ECX, [VAR_KERNEL_SIZE] ; 0xc1a2
-    MOV ESI, KERNEL_CACHE
-    MOV EDI, KERNEL_OFFSET
+    MOV     ECX, [VAR_KERNEL_SIZE] ; 0xc1a2
+    MOV     ESI, KERNEL_CACHE
+    MOV     EDI, KERNEL_OFFSET
     CLD
     REP MOVSB
 
@@ -151,16 +151,16 @@ flush_pipeline:
     ; ADD     ECX, KERNEL_OFFSET  ; 内核主函数的绝对地址
     MOV     EAX, 1<<3; 全局可执行段
     PUSH    AX  ; 0xc1e4 
-    PUSH DWORD   KERNEL_OFFSET
+    PUSH    DWORD   KERNEL_OFFSET
     ; MOV     AX, 1<<3
     ; MOV     DS, AX
-    JMP FAR [SS:ESP]  ; 0xc6ca
+    JMP     FAR [SS:ESP]  ; 0xc6ca
 
 wait_for_keyword_out:
     ; 等待IOPort 0x64清空
-    IN AL, 0x64
-    AND AL, 0x02
-    JNZ wait_for_keyword_out
+    IN      AL, 0x64
+    AND     AL, 0x02
+    JNZ     wait_for_keyword_out
     RET
 ; memcpy4byte:
 ;     ; 以4byte为单位拷贝内存
@@ -191,12 +191,12 @@ GDTR:
     ALIGNB	16, DB 0x00
 [BITS 16]
 display_string:
-    PUSH SI
-    MOV AX, PROGLOADER_MESSAGE_PREFIX
-    MOV SI, AX
-    CALL [FUNC_DISPLAY_STRING]
-    POP SI
-    CALL [FUNC_DISPLAY_STRING]
+    PUSH    SI
+    MOV     AX, PROGLOADER_MESSAGE_PREFIX
+    MOV     SI, AX
+    CALL    [FUNC_DISPLAY_STRING]
+    POP     SI
+    CALL    [FUNC_DISPLAY_STRING]
     RET
 
 KERNEL_FILENAME:

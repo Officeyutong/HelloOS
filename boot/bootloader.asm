@@ -94,89 +94,89 @@ main:
     VAR_DATA_START_SECTOR EQU 0x600 + 28; 数据区开始扇区，4byte
     VAR_ROOT_DIR_ENTRIES EQU 0x600 + 32; 根目录区项数，4byte
 
-    MOV WORD [FUNC_DISPLAY_STRING], display_string
+    MOV     WORD [FUNC_DISPLAY_STRING], display_string
 
-    MOV DWORD EAX, [fat_length]
-    MOV DWORD [VAR_FAT_SIZE], EAX
+    MOV     DWORD EAX, [fat_length]
+    MOV     DWORD [VAR_FAT_SIZE], EAX
     
-    XOR EAX, EAX
+    XOR     EAX, EAX
     ; FAT起始扇区
-    MOV WORD AX, [fat_start]
-    MOV WORD [VAR_FAT_START], AX
+    MOV     WORD AX, [fat_start]
+    MOV     WORD [VAR_FAT_START], AX
 
     ; 根目录区起始扇区
-    MOV DWORD EBX, [VAR_FAT_SIZE]
-    SHL EBX, 1
-    XOR EAX, EAX
-    MOV WORD AX, [VAR_FAT_START]
-    ADD EAX, EBX
-    MOV DWORD [VAR_ROOT_ENTRY_START], EAX
+    MOV     DWORD EBX, [VAR_FAT_SIZE]
+    SHL     EBX, 1
+    XOR     EAX, EAX
+    MOV     WORD AX, [VAR_FAT_START]
+    ADD     EAX, EBX
+    MOV     DWORD [VAR_ROOT_ENTRY_START], EAX
     ; 根目录区长度(扇区)
-    MOV DWORD EAX, [root_entries]
-    SHR EAX, 4
-    MOV WORD [VAR_ROOT_ENTRY_SIZE], AX
+    MOV     DWORD EAX, [root_entries]
+    SHR     EAX, 4
+    MOV     WORD [VAR_ROOT_ENTRY_SIZE], AX
     ; 簇大小(扇区)
-    XOR EAX, EAX
-    MOV BYTE AL, [cluster_size]
-    MOV BYTE [VAR_CLUSTER_SIZE_IN_SECTOR], AL
+    XOR     EAX, EAX
+    MOV     BYTE AL, [cluster_size]
+    MOV     BYTE [VAR_CLUSTER_SIZE_IN_SECTOR], AL
     ; 簇大小(字节)
-    SHL EAX, 9
-    MOV DWORD [VAR_CLUSTER_SIZE_IN_BYTE], EAX
+    SHL     EAX, 9
+    MOV     DWORD [VAR_CLUSTER_SIZE_IN_BYTE], EAX
     ; 数据扇区起始
-    MOV DWORD EAX, [VAR_ROOT_ENTRY_START]
-    XOR EBX, EBX
-    MOV WORD BX, [VAR_ROOT_ENTRY_SIZE]
-    ADD EAX, EBX
-    MOV DWORD [VAR_DATA_START_SECTOR], EAX
+    MOV     DWORD EAX, [VAR_ROOT_ENTRY_START]
+    XOR     EBX, EBX
+    MOV     WORD BX, [VAR_ROOT_ENTRY_SIZE]
+    ADD     EAX, EBX
+    MOV     DWORD [VAR_DATA_START_SECTOR], EAX
     ; 根目录区项数
-    XOR EAX, EAX
-    MOV WORD AX, [root_entries]
-    MOV DWORD [VAR_ROOT_DIR_ENTRIES], EAX ; 0x7CC3
+    XOR     EAX, EAX
+    MOV     WORD AX, [root_entries]
+    MOV     DWORD [VAR_ROOT_DIR_ENTRIES], EAX ; 0x7CC3
     ; MOV WORD [VAR_MESSAGE_PREFIX], MESSAGE_PREFIX
     ; 检查是否支持LBA
 
-    MOV AH, 0x41
-    MOV BX, 0x55AA
-    MOV DL, 0x80
-    INT 0x13
+    MOV     AH, 0x41
+    MOV     BX, 0x55AA
+    MOV     DL, 0x80
+    INT     0x13
     PUSHFD
-    MOV EAX, [ESP]
-    AND EAX, 1
-    CMP EAX, 0 ; CF是1，不支持
-    JNE unsupported
+    MOV     EAX, [ESP]
+    AND     EAX, 1
+    CMP     EAX, 0 ; CF是1，不支持
+    JNE     unsupported
 
-    JMP boot_continue
+    JMP     boot_continue
 
     ALIGNB 4, DB 0x00
 LBA_READ_STRUCT: ; 0x7c7c
-    DB 16
-    DB 0
+    DB      16
+    DB      0
 BLOCK_COUNT:
-    DW EXT_BOOTLOADER_LENGTH ; 读取的块个数
+    DW      EXT_BOOTLOADER_LENGTH ; 读取的块个数
 DEST_MEMORY_ADDR:
-    DW EXT_BOOTLOADER_STORE ; 段内偏移
-    DW 0 ; 段地址
+    DW      EXT_BOOTLOADER_STORE ; 段内偏移
+    DW      0 ; 段地址
 LBA:
-    DD 1 ; 逻辑地址的低32位
-    DD 0 ; 逻辑地址的高16位
+    DD      1 ; 逻辑地址的低32位
+    DD      0 ; 逻辑地址的高16位
 
     ; TOTAL_SHOULD_READ EQU FAT_TABLE_SIZE + ROOT_DIR_BLOCK_SIZE
     ; MOV WORD [BLOCK_COUNT], TOTAL_SHOULD_READ
     ; MOV WORD [DEST_MEMORY_ADDR], FAT_STORE
     ; MOV DWORD [LBA], 1 ; 引导扇区是0
 boot_continue:
-    MOV AX, 0
-    MOV DS, AX
-    MOV SI, LBA_READ_STRUCT
+    MOV     AX, 0
+    MOV     DS, AX
+    MOV     SI, LBA_READ_STRUCT
 
-    MOV AH, 0x42
-    MOV DL, 0x80
-    INT 0x13
+    MOV     AH, 0x42
+    MOV     DL, 0x80
+    INT     0x13
     
-    CMP AH, 0 ; 0x7ca2
-    JNE read_error
+    CMP     AH, 0 ; 0x7ca2
+    JNE     read_error
 
-    JMP EXT_BOOTLOADER_STORE
+    JMP     EXT_BOOTLOADER_STORE
 
     ; 没那么多空间装判断代码了
     ; MOV BX, [BLOCK_COUNT]
@@ -207,14 +207,14 @@ boot_continue:
     ; JMP PROGLOADER_STORE ; 0x7ccf
 
 unsupported:
-    MOV SI, UNSUPPORTED
-    CALL display_string
-    JMP $
+    MOV     SI, UNSUPPORTED
+    CALL    display_string
+    JMP     $
 
 read_error:
-    MOV SI, ERROR_STRING
-    CALL display_string
-    JMP $
+    MOV     SI, ERROR_STRING
+    CALL    display_string
+    JMP     $
 
 ; not_enough_sectors:
 ;     MOV SI, NOT_ENOUGH_SECTOR_STRING
@@ -237,15 +237,15 @@ display_string:
     ; CALL display_string_raw
     ; RET
 display_string_raw: ;显示字符串，SI里存地址，zero-terminated
-    MOV AL,[SI]; 读一个字符
-    CMP AL, 0
-    JE end
-    MOV AH, 0x0e
-    MOV AL,[SI]
+    MOV     AL,[SI]; 读一个字符
+    CMP     AL, 0
+    JE      end
+    MOV     AH, 0x0e
+    MOV     AL,[SI]
     ; MOV BX,15
-    INT 0x10
-    ADD SI, 1
-    JMP display_string_raw
+    INT     0x10
+    ADD     SI, 1
+    JMP     display_string_raw
 end:
     RET
 
