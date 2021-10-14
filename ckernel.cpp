@@ -2,12 +2,11 @@
 #include <inttypes.h>
 #include "include/asmfunc.h"
 #include "include/display.h"
+#include "include/harddisk.h"
 #include "include/kprintf.h"
 #include "include/string.h"
-
 static PageTable* next_page_table = kernel_page_table_first;
 static const FAT12BootSector* boot_sector_ref = boot_sector;
-static int val = 0xcafebabe;
 static uint32_t seed = 0;
 static uint32_t rand() {
     seed ^= seed << 16;
@@ -93,20 +92,17 @@ void paint_screen() {
         }
     }
 }
-int cnt = 0;
-extern "C" void kernel_main() {
-    // boot_sector_ref =;
-    // const FAT12BootSector& boot_sector_ref = *boot_sector;
+extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     init_gdt_idt();
-    cnt++;
     init_paging();
-    cnt++;
     paint_screen();
-    cnt++;
+    FAT32BootSector boot;
+    FAT32Reader reader;
+    reader.read_sector(&boot, 0, 0);
+
     while (true) {
         __asm__("hlt");
     }
-    // // 设置段表
 }
 
 void write_segment_entry(void* ptr,

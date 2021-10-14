@@ -9,7 +9,8 @@ SECTIONS
     . = 0x280000; /* 内核加载的内存位置 */
     kernel_text :
     {
-        LONG(kernel_main - 0x280000)
+        *(section_kernel_main)
+        /* LONG(kernel_main - 0x280000) */
         *(.text)
     }
     /*
@@ -18,6 +19,7 @@ SECTIONS
         DATA,
         然后是RODATA
     */
+    . = 0x290000; /*数据段的位置，人工进行钦点*/
     kernel_data ALIGN(8)  : {
         *(.data)
         *(.rodata)

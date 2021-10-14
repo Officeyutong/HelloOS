@@ -33,7 +33,26 @@ struct FAT12BootSector {
     char label[11];
     char type_name[8];
     char code[448];
-    uint16_t magic_fat12;
+    uint16_t magic_fat;
+} __attribute__((packed, aligned(1)));
+
+struct FAT32BootSector {
+    MBRBootSector mbr;
+    uint32_t sectors_per_fat;
+    uint16_t flags;
+    uint16_t fat_version_num;
+    uint32_t root_cluster;
+    uint16_t fsinfo_sector;
+    uint16_t bootsector_backup;
+    char reserve1[12];
+    uint8_t int13_drivenumber;
+    uint8_t reserve2;
+    uint8_t signature;
+    uint32_t serial;
+    char label[11];
+    char type_name[8];
+    char code[420];
+    uint16_t magic_fat;
 } __attribute__((packed, aligned(1)));
 
 #endif

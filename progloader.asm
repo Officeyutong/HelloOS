@@ -23,7 +23,7 @@ ORG 0xC600  ;引导器加载的后面的扇区的地址
 
     CODE_SEGMENT EQU 0x00280000 ; C程序代码段
     DISK_CACHE EQU 0x00100000; 磁盘数据缓存
-    VBE_INFO EQU 0xC500 ; 显示信息
+    VBE_INFO EQU 0xE600 ; 显示信息
 
     ROOT_DIR_STORE EQU 0xA600
     PROGLOADER_STORE EQU 0xC600 ; ProgLoader地址
@@ -147,14 +147,14 @@ flush_pipeline:
     ; MOV     AX, 2<<3 ; C程序放的段，可执行; 0xc183
     ; MOV     DS, AX
     ; 获取主函数地址偏移
-    MOV     ECX, [KERNEL_OFFSET + 0] ; 0xc1b5
-    ADD     ECX, 4 + KERNEL_OFFSET  ; 地址偏移不包括前四个字节
+    ; MOV     ECX, [KERNEL_OFFSET + 0] ; 0xc1b5
+    ; ADD     ECX, KERNEL_OFFSET  ; 内核主函数的绝对地址
     MOV     EAX, 1<<3; 全局可执行段
     PUSH    AX  ; 0xc1e4 
-    PUSH    ECX
+    PUSH DWORD   KERNEL_OFFSET
     ; MOV     AX, 1<<3
     ; MOV     DS, AX
-    JMP FAR [SS:ESP]  ; 0xc1c9
+    JMP FAR [SS:ESP]  ; 0xc6ca
 
 wait_for_keyword_out:
     ; 等待IOPort 0x64清空
