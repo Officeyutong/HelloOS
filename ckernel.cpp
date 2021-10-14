@@ -5,8 +5,8 @@
 #include "include/harddisk.h"
 #include "include/kprintf.h"
 #include "include/string.h"
-static PageTable* next_page_table = kernel_page_table_first;
-static const FAT12BootSector* boot_sector_ref = boot_sector;
+PageTable* next_kernel_page_table = kernel_page_table_first;
+static const FAT32BootSector* boot_sector_ref = boot_sector;
 static uint32_t seed = 0;
 static uint32_t rand() {
     seed ^= seed << 16;
@@ -34,34 +34,7 @@ static void init_gdt_idt() {
         write_interrupt_entry(idt_info + i, 0, 0, 0, 0, 0, 0);
     load_idt(8 * IDT_COUNT - 1, idt_info);
 }
-// 处理begin~end的内核内存页映射
-static void map_memory_page(uint32_t begin, uint32_t end) {
-    for (uint32_t i = begin; i <= end; i++) {
-        uint32_t dir_index = i / 1024;
-        uint32_t table_index = i % 1024;
-        auto& entry = kernel_page_directory->entries[dir_index];
-        if (!entry.present) {
-            PageTable* table_addr = next_page_table--;
-            entry.pagetable_addr = ((uint32_t)table_addr) / 4096;
-            entry.cache_disabled = 1;
-            entry.present = 1;
-            entry.read_or_wrte = 1;
-            entry.zerobit = 0;
-            entry.read_or_wrte = 1;
-            entry.cache_disabled = 1;
-            entry.user_or_supervisor = 0;
-        }
-        auto& table_ref = *((PageTable*)(entry.pagetable_addr * 4096));
-        auto& table_entry_ref = table_ref.entries[table_index];
-        table_entry_ref.addr = i;
-        table_entry_ref.cache_disabled = 1;
-        table_entry_ref.global = 0;
-        table_entry_ref.present = 1;
-        table_entry_ref.read_or_wrte = 1;
-        table_entry_ref.user_or_supervisor = 0;
-        table_entry_ref.zerobit = 0;
-    }
-}
+
 static void init_paging() {
     map_memory_page(0, 0xff);
     map_memory_page(0x260, 0x4ff);
@@ -96,10 +69,12 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     init_gdt_idt();
     init_paging();
     paint_screen();
-    FAT32BootSector boot;
-    FAT32Reader reader;
-    reader.read_sector(&boot, 0, 0);
+    using namespace fat32;
 
+    FAT32Reader reader(boot_sector, boot_meta);
+    DirectoryEntry file;
+    uint32_t start_cluster =
+        reader.find_file(reader.info->root_cluster, "ascii_font.bin", file);
     while (true) {
         __asm__("hlt");
     }

@@ -11,15 +11,15 @@ ORG 0x8100
     VAR_MESSAGE_PREFIX EQU 0x600; 2byte
     VAR_KERNEL_SIZE EQU 0x600 + 2 ; 4byte
     VAR_LAST_SIZE EQU 0x600 + 2 + 4 ; 4byte
-    VAR_LED_STATE_STORE EQU 0x600 + 8; 1byte 键盘LED灯状态的存储地址
-    VAR_FAT_SIZE EQU 0x600 + 7; 4byte, FAT表长度
-    VAR_FAT_START EQU 0x600 + 11; 2byte, FAT表起始位置
-    VAR_ROOT_ENTRY_START EQU 0x600 + 13; 4byte, 根目录区起始位置
-    VAR_ROOT_ENTRY_SIZE EQU 0x600 + 17; 2byte, 根目录区扇区数
-    VAR_CLUSTER_SIZE_IN_SECTOR EQU 0x600 + 19;1byte 簇大小，扇区
-    VAR_CLUSTER_SIZE_IN_BYTE EQU 0x600 + 20;4byte 簇大小，字节
-    VAR_DATA_START_SECTOR EQU 0x600 + 24; 数据区开始扇区，4byte
-    VAR_ROOT_DIR_ENTRIES EQU 0x600 + 28; 根目录区项数，4byte
+    VAR_LED_STATE_STORE EQU 0x600 + 10; 1byte 键盘LED灯状态的存储地址
+    VAR_FAT_SIZE EQU 0x600 + 11; 4byte, FAT表长度
+    VAR_FAT_START EQU 0x600 + 15; 2byte, FAT表起始位置
+    VAR_ROOT_ENTRY_START EQU 0x600 + 17; 4byte, 根目录区起始位置
+    VAR_ROOT_ENTRY_SIZE EQU 0x600 + 21; 2byte, 根目录区扇区数
+    VAR_CLUSTER_SIZE_IN_SECTOR EQU 0x600 + 23;1byte 簇大小，扇区
+    VAR_CLUSTER_SIZE_IN_BYTE EQU 0x600 + 24;4byte 簇大小，字节
+    VAR_DATA_START_SECTOR EQU 0x600 + 28; 数据区开始扇区，4byte
+    VAR_ROOT_DIR_ENTRIES EQU 0x600 + 32; 根目录区项数，4byte
 
     ; 0x7E00 ~ 0x7FFFF - 实模式可用内存
     ; 0x500 ~ 0x7BFF - 实模式可用内存

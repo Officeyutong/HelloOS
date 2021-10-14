@@ -1,6 +1,6 @@
 include make_def.txt
 
-LINK_FILES = ckernel.o ./lib/asmfunc.o ./lib/ctype.o ./lib/display.o ./lib/kprintf.o ./lib/string.o ./lib/kutil.o ./lib/kutil-asm.o ./lib/harddisk.o
+LINK_FILES = ckernel.o ./lib/asmfunc.o ./lib/ctype.o ./lib/display.o ./lib/kprintf.o ./lib/string.o ./lib/kutil.o ./lib/kutil-asm.o ./lib/harddisk.o ./lib/paging.o
 
 
 ascii_font.bin: make_font.py hankaku.txt
@@ -72,8 +72,8 @@ debugx: helloos-fat32.img
 	qemu-system-i386.exe -m 512 -hda helloos-fat32.img -S -gdb tcp::2002 -monitor telnet:127.0.0.1:2001,server,nowait
 run-gdb: kernel.elf
 	gdb kernel.elf \
-	-ex 'target remote 127.0.0.1:2002' \
-	-ex 'break *0x7c00'
+	-ex 'target remote 127.0.0.1:2002'
+	# -ex 'break *0x7c00' \
 	# -ex 'set architecture i8086' \
 	# -ex 'set tdesc filename gdb/target.xml' 
 	

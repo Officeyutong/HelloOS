@@ -6,6 +6,14 @@ struct boot_meta_info_struct {
     uint32_t kernel_size;
     uint32_t last_file_size;
     uint8_t led_state;
+    uint32_t fat_lenght;
+    uint16_t fat_start_sector;
+    uint32_t rootdir_start_sector;
+    uint16_t rootdir_sector_count;
+    uint8_t cluster_size_in_sector;
+    uint32_t cluster_size_in_byte;
+    uint32_t data_start_sector;
+    uint32_t rootdir_entry_count;
 } __attribute__((packed, aligned(1)));
 struct MBRBootSector {
     uint8_t jmp[2];

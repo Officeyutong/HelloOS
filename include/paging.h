@@ -35,4 +35,5 @@ struct PageDirectory {
 struct PageTable {
     PageTableEntry entries[1024];
 };
+void map_memory_page(uint32_t begin, uint32_t end);
 #endif

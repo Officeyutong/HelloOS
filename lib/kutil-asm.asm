@@ -26,6 +26,7 @@ io_in8: ; uint8_t io_in8(uint16_t port)
     PUSH EBP
     MOV EBP, ESP
     MOV WORD DX, [ESP + 8]; port
+    XOR EAX, EAX
     IN AL, DX ; ret = AL
     LEAVE
     RET
