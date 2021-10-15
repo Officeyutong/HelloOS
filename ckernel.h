@@ -14,7 +14,7 @@
 #define idt_info ((IDT*)0x26F800)
 
 #define kernel_page_directory ((PageDirectory*)0x26E000)
-#define kernel_page_table_first ((PageTable*)0x26D000)
+#define kernel_page_table_first ((PageTable*)0x26C000)
 #define ascii_font_table ((ASCIIFontTable*)0x26D000)
 
 extern PageTable* next_kernel_page_table;

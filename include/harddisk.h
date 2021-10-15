@@ -12,9 +12,9 @@ struct FATTimeField {
 } __attribute__((packed, aligned(1)));
 
 struct FATDateField {
-    uint16_t day : 7;
+    uint16_t day : 5;
     uint16_t month : 4;
-    uint16_t year : 5;
+    uint16_t year : 7;
 } __attribute__((packed, aligned(1)));
 
 struct DirectoryEntry {
@@ -57,6 +57,11 @@ struct FAT32Reader {
                        const char* filename,
                        DirectoryEntry& output);
     uint32_t read_cluster_num(uint32_t cluster);
+    void read_file(uint32_t cluster, uint32_t size, void* buffer);
+    uint64_t get_sector_by_cluster(uint32_t cluster) {
+        return this->boot_meta_info->rootdir_start_sector +
+               (uint64_t)(cluster - 2) * info->mbr.cluster_size;
+    }
 };
 }  // namespace fat32
 #endif

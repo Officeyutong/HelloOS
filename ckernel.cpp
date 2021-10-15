@@ -7,6 +7,7 @@
 #include "include/string.h"
 PageTable* next_kernel_page_table = kernel_page_table_first;
 static const FAT32BootSector* boot_sector_ref = boot_sector;
+static PageDirectory* root_page_directory = kernel_page_directory;
 static uint32_t seed = 0;
 static uint32_t rand() {
     seed ^= seed << 16;
@@ -58,8 +59,8 @@ void paint_screen() {
                  i < (a + 1) * vbe_info->width / SECTION_COUNT; i++) {
                 for (int j = k * sectionHeight; j < (k + 1) * sectionHeight;
                      j++) {
-                    // 从右到左压栈
-                    write_pixel_at(i, j, color);
+                    write_pixel_at(i, j, 0x0);
+                    // write_pixel_at(i, j, color);
                 }
             }
         }
@@ -73,8 +74,16 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
 
     FAT32Reader reader(boot_sector, boot_meta);
     DirectoryEntry file;
-    uint32_t start_cluster =
+    auto start_cluster =
         reader.find_file(reader.info->root_cluster, "ascii_font.bin", file);
+    reader.read_file(start_cluster, file.size, ascii_font_table);
+    char str_buf[1024];
+    sprintf(str_buf,
+            "Build time: %s, resolution: (%u, %u), kernel_size: %u\nkernel.bin "
+            "tql!!!",
+            __TIMESTAMP__, vbe_info->width, vbe_info->height,
+            boot_meta->kernel_size);
+    write_string_at(40, 40, str_buf, 0xffffff);
     while (true) {
         __asm__("hlt");
     }
