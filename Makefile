@@ -72,7 +72,7 @@ debugx: helloos-fat32.img
 	qemu-system-i386.exe -m 512 -hda helloos-fat32.img -S -gdb tcp::2002 -monitor telnet:127.0.0.1:2001,server,nowait
 run-gdb: kernel.elf
 	gdb kernel.elf \
-	-ex 'target remote 127.0.0.1:2002'
+	-ex 'target remote 127.0.0.1:2002' 
 	# -ex 'break *0x7c00' \
 	# -ex 'set architecture i8086' \
 	# -ex 'set tdesc filename gdb/target.xml' 

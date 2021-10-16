@@ -6,6 +6,7 @@
 #include "include/boot_meta.h"
 #include "include/gdt.h"
 #include "include/idt.h"
+#include "include/memory.h"
 #include "include/paging.h"
 #include "include/vbe.h"
 #define vbe_info ((vbe_mode_info_structure*)(0xE600))
@@ -17,6 +18,7 @@
 #define kernel_page_directory ((PageDirectory*)0x26E000)
 #define kernel_page_table_first ((PageTable*)0x26C000)
 #define ascii_font_table ((ASCIIFontTable*)0x26D000)
+#define memory_usage_pack ((MemoryUsagePack*)0x700)
 
 #define PIC1_COMMAND ((uint16_t)(0x0020))
 #define PIC1_DATA ((uint16_t)(0x0021))

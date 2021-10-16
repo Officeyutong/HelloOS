@@ -8,8 +8,11 @@
 #include "include/keyboard_mouse.h"
 #include "include/kprintf.h"
 #include "include/kutil.h"
+#include "include/memory.h"
 #include "include/string.h"
+
 PageTable* next_kernel_page_table = kernel_page_table_first;
+static const MemoryUsagePack& memory_usage_pack_ref = *memory_usage_pack;
 static uint32_t seed = 0;
 static uint32_t rand() {
     seed ^= seed << 16;
@@ -17,6 +20,7 @@ static uint32_t rand() {
     seed ^= seed << 1;
     return seed;
 }
+
 uint64_t makeTime() {
     const char* timestamp = __TIMESTAMP__;
     uint64_t r = 0;
@@ -24,7 +28,15 @@ uint64_t makeTime() {
         r = r * 10 + *c - '0';
     return r;
 }
-
+static void collect_memory() {
+    for (int i = 0; i < memory_usage_pack_ref.count; i++) {
+        char buf[512];
+        const auto& curr = memory_usage_pack_ref.arr[i];
+        sprintf(buf, "base=%08llx, length=%08llx, type=%u", curr.base, curr.length,
+                curr.type);
+        write_string_at(40, 100 + i * 18, buf, 0xffffff, 0);
+    }
+}
 static void init_gdt_idt() {
     for (int i = 0; i < GDT_COUNT; i++)
         write_segment_entry(gdt_info + i, 0, 0, 0, 0);
@@ -117,6 +129,7 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     init_pic(0x20, 0x28);
     io_sti();
     paint_screen();
+
     using namespace fat32;
     init_keyboard();
     FAT32Reader reader(boot_sector, boot_meta);
@@ -131,7 +144,7 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
             __TIMESTAMP__, vbe_info->width, vbe_info->height,
             boot_meta->kernel_size);
     write_string_at(40, 40, str_buf, 0xffffff, 0x0);
-
+    collect_memory();
     init_mouse();
     io_out8(PIC1_DATA, 0xF9);  // 允许键盘中断和从中断器
     io_out8(PIC2_DATA, 0xEF);  // 允许鼠标中断

@@ -6,7 +6,7 @@ GLOBAL io_ins16
 GLOBAL io_sti
 GLOBAL io_stihlt
 GLOBAL io_cli
-
+GLOBAL bios_0x15_e820
 io_out8: ; void io_out8(uint16_t port,uint8_t data)
     PUSH EBP
     MOV EBP, ESP

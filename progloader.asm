@@ -46,6 +46,9 @@ ORG 0xC600  ;引导器加载的后面的扇区的地址
     VAR_DATA_START_SECTOR EQU 0x600 + 28; 数据区开始扇区，4byte
     VAR_ROOT_DIR_ENTRIES EQU 0x600 + 32; 根目录区项数，4byte
 
+    VAR_MEMORY_ENTRY_COUNT EQU 0x700 ; 内存项数, 4byte
+    VAR_MEMORY_ENTRY_ARRAY EQU 0x700 + 4
+
     KERNEL_CACHE EQU 0xE700
     KERNEL_OFFSET EQU 0x280000
 
@@ -91,6 +94,32 @@ kernel_loaded:
     MOV     BX, 0x4118 ; 1024x768x16M 0x4000 | 0x118 (启用Linear FrameBuffer)
     INT     0x10
     
+    ; 探测内存
+
+    XOR     EBX, EBX
+    MOV     DWORD EDI, VAR_MEMORY_ENTRY_ARRAY
+    MOV     AX, 0
+    MOV     ES, AX
+detect_memory_continue:
+    MOV     EDX, 0x534D4150 ; 0xc654
+    MOV     EAX, 0xE820
+    MOV     ECX, 24
+    INT     0x15 ; 0xc666
+
+    CMP     EBX, 0 ; 0xc668
+    JE      detect_memory_done
+
+    MOV     DWORD EAX, [EDI + 8]
+    MOV     DWORD ECX, [EDI + 12]
+    OR      EAX, ECX
+    CMP     EAX, 0
+    JE detect_memory_continue ; 抛弃长度为0的
+
+    INC     DWORD [VAR_MEMORY_ENTRY_COUNT] ; 0xc681
+    ADD     EDI, 24
+    JMP     detect_memory_continue
+detect_memory_done:
+    INC     DWORD [VAR_MEMORY_ENTRY_COUNT] ; 0xc681
     ; 获取指示灯状态
     MOV     AH, 0x02 ; 0xc14a
     INT     0x16
