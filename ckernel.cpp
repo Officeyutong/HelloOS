@@ -127,7 +127,7 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     char str_buf[1024];
     sprintf(str_buf,
             "Build time: %s, resolution: (%u, %u), kernel_size: %u\n\n"
-            "I good vegetable ah",
+            "kb fAKe",
             __TIMESTAMP__, vbe_info->width, vbe_info->height,
             boot_meta->kernel_size);
     write_string_at(40, 40, str_buf, 0xffffff, 0x0);
@@ -135,6 +135,8 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     init_mouse();
     io_out8(PIC1_DATA, 0xF9);  // 允许键盘中断和从中断器
     io_out8(PIC2_DATA, 0xEF);  // 允许鼠标中断
+    uint8_t mouse_stage = 0;
+    uint8_t mouse_data[3];
     while (true) {
         asm("cli");
         if (keyboard_mouse::keyboard_buffer.len != 0) {
@@ -146,9 +148,19 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
         } else if (keyboard_mouse::mouse_buffer.len != 0) {
             uint8_t data = keyboard_mouse::mouse_buffer.get();
             asm("sti");
-            char buf[128];
-            sprintf(buf, "You moved: 0x%02x", data);
-            write_string_at(0, 18, buf, 0x0, 0xFFFFFF);
+            if (data == 0xFA && mouse_stage == 0) {
+                mouse_stage = 1;
+            } else if (mouse_stage == 1 || mouse_stage == 2) {
+                mouse_data[mouse_stage - 1] = data;
+                mouse_stage++;
+            } else if (mouse_stage == 3) {
+                mouse_data[2] = data;
+                mouse_stage = 1;
+                char buf[128];
+                sprintf(buf, "You moved: 0x%02x 0x%02x 0x%02x", mouse_data[0],
+                        mouse_data[1], mouse_data[2]);
+                write_string_at(0, 18, buf, 0x0, 0xFFFFFF);
+            }
         } else {
             asm("sti;hlt");
         }
