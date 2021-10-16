@@ -4,8 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "../include/ctype.h"
-#include "../include/string.h"
 #include "../include/mydef.h"
+#include "../include/string.h"
 static char* __int_str(intmax_t i,
                        char b[],
                        int base,
@@ -84,12 +84,11 @@ static size_t displayCharacter(char c, int* a, char* buf) {
 }
 
 static size_t displayString(const char* c, int* a, char* buf) {
-    size_t outcnt = strlen(c);
-    // for (int i = 0; c[i]; ++i) {
-    //     outcnt += displayCharacter(c[i], a, buf + i);
-    // }
-    strcat(buf, c);
-    a += strlen(c);
+    size_t outcnt = 0;
+    for (const char* p = c; *p; p++) {
+        outcnt += displayCharacter(*p, a, buf);
+        buf++;
+    }
     return outcnt;
 }
 
@@ -495,7 +494,8 @@ int svprintf(char* buf, const char* format, va_list list) {
             displayCharacter(format[i], &chars);
         }
     }
-
+    chars++;
+    *(buf++) = '\0';
     return chars;
 }
 

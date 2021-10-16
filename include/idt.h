@@ -16,4 +16,8 @@ void write_interrupt_entry(void* ptr,
                            uint8_t S,
                            uint8_t gate_type);
 
+extern "C" {
+void load_idt(uint16_t length, void* addr);
+}
+
 #endif

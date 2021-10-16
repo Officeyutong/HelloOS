@@ -119,10 +119,10 @@ void FAT32Reader::read_file(uint32_t cluster, uint32_t size, void* buffer) {
         auto sector = this->get_sector_by_cluster(cluster);
         this->read_sector(localbuf, sector & 0xFFFFFFFF,
                           (sector >> 32) & 0xFFFF, info->mbr.cluster_size);
-        if (size >= 8192) {
-            memcpy(buf, localbuf, 8192);
-            size -= 8192;
-            buf += 8192;
+        if (size >= cluster_size_in_bytes) {
+            memcpy(buf, localbuf, cluster_size_in_bytes);
+            size -= cluster_size_in_bytes;
+            buf += cluster_size_in_bytes;
             cluster = this->read_cluster_num(cluster);
         } else {
             memcpy(buf, localbuf, size);

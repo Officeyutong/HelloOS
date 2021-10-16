@@ -3,6 +3,9 @@ GLOBAL io_out16
 GLOBAL io_in8
 GLOBAL io_in16
 GLOBAL io_ins16
+GLOBAL io_sti
+GLOBAL io_stihlt
+GLOBAL io_cli
 
 io_out8: ; void io_out8(uint16_t port,uint8_t data)
     PUSH EBP
@@ -52,3 +55,15 @@ io_ins16: ; void io_ins16(uint16_t port, uint32_t buffer, uint32_t count)
     LEAVE
     RET
 
+io_sti: ; void io_sti()
+    STI
+    RET
+
+io_stihlt:
+    STI
+    HLT
+    RET
+
+io_cli:
+    CLI
+    RET

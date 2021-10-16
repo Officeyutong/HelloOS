@@ -1,10 +1,10 @@
 include make_def.txt
 
-LINK_FILES = ckernel.o ./lib/asmfunc.o ./lib/ctype.o ./lib/display.o ./lib/kprintf.o ./lib/string.o ./lib/kutil.o ./lib/kutil-asm.o ./lib/harddisk.o ./lib/paging.o
+LINK_FILES = ckernel.o ./lib/ctype.o ./lib/display.o ./lib/kprintf.o ./lib/string.o ./lib/kutil.o ./lib/kutil-asm.o ./lib/harddisk.o ./lib/paging.o ./lib/gdt.o ./lib/idt.o ./lib/interrupt-asm.o ./lib/interrupt.o ./lib/keyboard_mouse.o
 
 
 ascii_font.bin: make_font.py hankaku.txt
-	python3.8 make_font.py hankaku.txt ascii_font.bin
+	python3 make_font.py hankaku.txt ascii_font.bin
 
 
 progloader.bin: progloader.asm

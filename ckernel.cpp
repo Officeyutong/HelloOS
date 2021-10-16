@@ -1,13 +1,15 @@
 #include "ckernel.h"
 #include <inttypes.h>
-#include "include/asmfunc.h"
 #include "include/display.h"
+#include "include/gdt.h"
 #include "include/harddisk.h"
+#include "include/idt.h"
+#include "include/interrupt.h"
+#include "include/keyboard_mouse.h"
 #include "include/kprintf.h"
+#include "include/kutil.h"
 #include "include/string.h"
 PageTable* next_kernel_page_table = kernel_page_table_first;
-static const FAT32BootSector* boot_sector_ref = boot_sector;
-static PageDirectory* root_page_directory = kernel_page_directory;
 static uint32_t seed = 0;
 static uint32_t rand() {
     seed ^= seed << 16;
@@ -27,12 +29,19 @@ static void init_gdt_idt() {
     for (int i = 0; i < GDT_COUNT; i++)
         write_segment_entry(gdt_info + i, 0, 0, 0, 0);
     // write_segment_entry(gdt_info , 0, 0, 0, 0);                  // 0项
-    write_segment_entry(gdt_info + 1, 0, 0xfffff, 0x9a, 0x0c);  // 全局可执行
-    write_segment_entry(gdt_info + 2, 0, 0xfffff, 0x9a, 0x0c);  // 全局不可执行
-    load_gdt(3 * 8 - 1, gdt_info);
+    write_segment_entry(gdt_info + 1, 0, 0xfffff, 0x0c, 0x9a);  // 全局可执行
+    write_segment_entry(gdt_info + 2, 0, 0xfffff, 0x0c, 0x92);  // 全局不可执行
+    load_gdt(8 * GDT_COUNT - 1, gdt_info);
 
     for (int i = 0; i < IDT_COUNT; i++)
         write_interrupt_entry(idt_info + i, 0, 0, 0, 0, 0, 0);
+    write_interrupt_entry(idt_info + 0x21, (uint32_t)&asm_interrupt_0x21,
+                          1 << 3, 1, 0, 0, 0x0e);
+    write_interrupt_entry(idt_info + 0x27, (uint32_t)&asm_interrupt_0x27,
+                          1 << 3, 1, 0, 0, 0x0e);
+    write_interrupt_entry(idt_info + 0x2c, (uint32_t)&asm_interrupt_0x2c,
+                          1 << 3, 1, 0, 0, 0x0e);
+
     load_idt(8 * IDT_COUNT - 1, idt_info);
 }
 
@@ -59,19 +68,57 @@ void paint_screen() {
                  i < (a + 1) * vbe_info->width / SECTION_COUNT; i++) {
                 for (int j = k * sectionHeight; j < (k + 1) * sectionHeight;
                      j++) {
-                    write_pixel_at(i, j, 0x0);
-                    // write_pixel_at(i, j, color);
+                    // write_pixel_at(i, j, 0x0);
+                    write_pixel_at(i, j, color);
                 }
             }
         }
     }
 }
+static void init_pic(uint8_t master_offset, uint8_t slave_offset) {
+    // uint8_t a1 = io_in8(PIC1_DATA);
+    // uint8_t a2 = io_in8(PIC2_DATA);
+    io_out8(PIC1_DATA, 0xff);
+    io_out8(PIC2_DATA, 0xff);
+
+    io_out8(PIC1_COMMAND, 0x11);
+    io_out8(PIC1_DATA, master_offset);
+    io_out8(PIC1_DATA, 1 << 2);
+    io_out8(PIC1_DATA, 1);
+
+    io_out8(PIC2_COMMAND, 0x11);
+    io_out8(PIC2_DATA, slave_offset);
+    io_out8(PIC2_DATA, 2);
+    io_out8(PIC2_DATA, 1);
+
+    io_out8(PIC1_DATA, 0xfb);
+    io_out8(PIC2_DATA, 0xff);
+}
+
+static void init_keyboard() {
+    using namespace keyboard_mouse;
+    keyboard_buffer.init();
+    wait_for_keyboard_send_ready();
+    io_out8(KEYBOARD_COMMAND, 0x60);
+    wait_for_keyboard_send_ready();
+    io_out8(KEYBOARD_DATA, 0x47);
+}
+static void init_mouse() {
+    using namespace keyboard_mouse;
+    mouse_buffer.init();
+    wait_for_keyboard_send_ready();
+    io_out8(KEYBOARD_COMMAND, 0xd4);
+    wait_for_keyboard_send_ready();
+    io_out8(KEYBOARD_DATA, 0xF4);
+}
 extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     init_gdt_idt();
     init_paging();
+    init_pic(0x20, 0x28);
+    io_sti();
     paint_screen();
     using namespace fat32;
-
+    init_keyboard();
     FAT32Reader reader(boot_sector, boot_meta);
     DirectoryEntry file;
     auto start_cluster =
@@ -79,13 +126,32 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     reader.read_file(start_cluster, file.size, ascii_font_table);
     char str_buf[1024];
     sprintf(str_buf,
-            "Build time: %s, resolution: (%u, %u), kernel_size: %u\nkernel.bin "
-            "tql!!!",
+            "Build time: %s, resolution: (%u, %u), kernel_size: %u\n\n"
+            "I good vegetable ah",
             __TIMESTAMP__, vbe_info->width, vbe_info->height,
             boot_meta->kernel_size);
-    write_string_at(40, 40, str_buf, 0xffffff);
+    write_string_at(40, 40, str_buf, 0xffffff, 0x0);
+
+    init_mouse();
+    io_out8(PIC1_DATA, 0xF9);  // 允许键盘中断和从中断器
+    io_out8(PIC2_DATA, 0xEF);  // 允许鼠标中断
     while (true) {
-        __asm__("hlt");
+        asm("cli");
+        if (keyboard_mouse::keyboard_buffer.len != 0) {
+            uint8_t keycode = keyboard_mouse::keyboard_buffer.get();
+            asm("sti");
+            char buf[128];
+            sprintf(buf, "You pressed: 0x%02x", keycode);
+            write_string_at(0, 0, buf, 0x0, 0xFFFFFF);
+        } else if (keyboard_mouse::mouse_buffer.len != 0) {
+            uint8_t data = keyboard_mouse::mouse_buffer.get();
+            asm("sti");
+            char buf[128];
+            sprintf(buf, "You moved: 0x%02x", data);
+            write_string_at(0, 18, buf, 0x0, 0xFFFFFF);
+        } else {
+            asm("sti;hlt");
+        }
     }
 }
 

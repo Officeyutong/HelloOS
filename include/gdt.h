@@ -12,4 +12,8 @@ void write_segment_entry(void* ptr,
                          uint8_t flags,
                          uint8_t access_byte);
 
+extern "C" {
+void load_gdt(uint16_t length, void* addr);
+}
+
 #endif

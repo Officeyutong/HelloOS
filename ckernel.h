@@ -1,6 +1,7 @@
 #ifndef _MYDEF
 #define _MYDEF
 
+#include <cinttypes>
 #include "include/ascii_font.h"
 #include "include/boot_meta.h"
 #include "include/gdt.h"
@@ -16,6 +17,11 @@
 #define kernel_page_directory ((PageDirectory*)0x26E000)
 #define kernel_page_table_first ((PageTable*)0x26C000)
 #define ascii_font_table ((ASCIIFontTable*)0x26D000)
+
+#define PIC1_COMMAND ((uint16_t)(0x0020))
+#define PIC1_DATA ((uint16_t)(0x0021))
+#define PIC2_COMMAND ((uint16_t)(0x00A0))
+#define PIC2_DATA ((uint16_t)(0x00A1))
 
 extern PageTable* next_kernel_page_table;
 

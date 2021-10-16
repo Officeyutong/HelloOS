@@ -1,6 +1,6 @@
 include ../make_def.txt
 
-all: kprintf.o string.o ctype.o display.o asmfunc.o kutil.o kutil-asm.o harddisk.o paging.o
+all: kprintf.o string.o ctype.o display.o kutil.o kutil-asm.o harddisk.o paging.o idt.o gdt.o interrupt-asm.o interrupt.o keyboard_mouse.o
 
 kprintf.o: kprintf.cpp
 	$(CXX_COMPILE) kprintf.cpp -o kprintf.o
@@ -16,11 +16,19 @@ harddisk.o: harddisk.cpp
 	$(CXX_COMPILE) harddisk.cpp -o harddisk.o
 paging.o: paging.cpp
 	$(CXX_COMPILE) paging.cpp -o paging.o
+interrupt.o: interrupt.cpp
+	$(CXX_COMPILE) interrupt.cpp -o interrupt.o
+keyboard_mouse.o: keyboard_mouse.cpp
+	$(CXX_COMPILE) keyboard_mouse.cpp -o keyboard_mouse.o
 
-asmfunc.o: asmfunc.asm
-	nasm asmfunc.asm -f elf32 -o asmfunc.o
 kutil-asm.o: kutil-asm.asm
 	nasm kutil-asm.asm -f elf32 -o kutil-asm.o
+gdt.o: gdt.asm
+	nasm gdt.asm -f elf32 -o gdt.o
+idt.o: idt.asm
+	nasm idt.asm -f elf32 -o idt.o
+interrupt-asm.o: interrupt-asm.asm
+	nasm interrupt-asm.asm -f elf32 -o interrupt-asm.o
 
 clean:
 	$(DEL) *.o
