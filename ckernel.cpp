@@ -32,8 +32,8 @@ static void collect_memory() {
     for (int i = 0; i < memory_usage_pack_ref.count; i++) {
         char buf[512];
         const auto& curr = memory_usage_pack_ref.arr[i];
-        sprintf(buf, "base=%08llx, length=%08llx, type=%u", curr.base, curr.length,
-                curr.type);
+        sprintf(buf, "base=%08llx, length=%08llx, type=%u", curr.base,
+                curr.length, curr.type);
         write_string_at(40, 100 + i * 18, buf, 0xffffff, 0);
     }
 }
@@ -140,7 +140,8 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     char str_buf[1024];
     sprintf(str_buf,
             "Build time: %s, resolution: (%u, %u), kernel_size: %u\n\n"
-            "kb fAKe",
+            // "kb fAKe"
+            ,
             __TIMESTAMP__, vbe_info->width, vbe_info->height,
             boot_meta->kernel_size);
     write_string_at(40, 40, str_buf, 0xffffff, 0x0);
@@ -148,8 +149,8 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     init_mouse();
     io_out8(PIC1_DATA, 0xF9);  // 允许键盘中断和从中断器
     io_out8(PIC2_DATA, 0xEF);  // 允许鼠标中断
-    uint8_t mouse_stage = 0;
-    uint8_t mouse_data[3];
+    keyboard_mouse::MouseDecoder mouse;
+    int32_t mouse_x = 0, mouse_y = 0;
     while (true) {
         asm("cli");
         if (keyboard_mouse::keyboard_buffer.len != 0) {
@@ -157,22 +158,16 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
             asm("sti");
             char buf[128];
             sprintf(buf, "You pressed: 0x%02x", keycode);
-            write_string_at(0, 0, buf, 0x0, 0xFFFFFF);
+            write_string_at(0, 0, buf, 0xFFFFFF, 0x0);
         } else if (keyboard_mouse::mouse_buffer.len != 0) {
             uint8_t data = keyboard_mouse::mouse_buffer.get();
             asm("sti");
-            if (data == 0xFA && mouse_stage == 0) {
-                mouse_stage = 1;
-            } else if (mouse_stage == 1 || mouse_stage == 2) {
-                mouse_data[mouse_stage - 1] = data;
-                mouse_stage++;
-            } else if (mouse_stage == 3) {
-                mouse_data[2] = data;
-                mouse_stage = 1;
+            if (mouse.sendByte(data)) {
+                mouse_x += mouse.x, mouse_y += mouse.y;
                 char buf[128];
-                sprintf(buf, "You moved: 0x%02x 0x%02x 0x%02x", mouse_data[0],
-                        mouse_data[1], mouse_data[2]);
-                write_string_at(0, 18, buf, 0x0, 0xFFFFFF);
+                sprintf(buf, "Button: %x, x: %4d, y: %4d", mouse.button,
+                        mouse_x, mouse_y);
+                write_string_at(0, 18, buf, 0xFFFFFF, 0);
             }
         } else {
             asm("sti;hlt");
