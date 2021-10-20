@@ -7,6 +7,8 @@ ORG 0xC600  ;引导器加载的后面的扇区的地址
 ; 扩展引导器放在 0x8100 ~ 0x84FF (1024byte)
 ; FAT表遍历缓存放在 0x8500 ~ 0x86FF (512Byte)
 
+; VBE查询缓存放在0x8700 ~ 0x88FF(512B)
+
 ; 根目录表放在 0xA600~0xC5FF(512*16 byte)
 ; progload放在 0xC600 ~ 0xE5FF ; 最多8K
 ; VBE_INFO      0xE600~E6FF
@@ -24,7 +26,8 @@ ORG 0xC600  ;引导器加载的后面的扇区的地址
     CODE_SEGMENT EQU 0x00280000 ; C程序代码段
     DISK_CACHE EQU 0x00100000; 磁盘数据缓存
     VBE_INFO EQU 0xE600 ; 显示信息
-
+    VBE_QUERY_CACHE EQU 0x8700
+    
     ROOT_DIR_STORE EQU 0xA600
     PROGLOADER_STORE EQU 0xC600 ; ProgLoader地址
     FAT_ACCESS_CACHE EQU 0x8500
@@ -80,22 +83,61 @@ kernel_loaded:
     CALL    [FUNC_READ_FILE] ; 0xc12e
 
     
+    ; 查询VBE控制器信息 https://wiki.osdev.org/VESA
+    MOV     AX, 0
+    MOV     ES, AX
+    MOV     AX, 0x4F00
+    MOV     DI, VBE_QUERY_CACHE
+    INT     0x10
+    MOV     SI, MESSAGE_FAILED_TO_QUERY_VBE_INFO
+    CMP     AX, 0x004F
+    JNE     DIE ; 查询失败
+
+    MOV     WORD DS, [VBE_QUERY_CACHE + 14 + 2]
+    MOV     WORD SI, [VBE_QUERY_CACHE + 14]
+vbe_query_next_mode:
+
     MOV     AX, VBE_INFO / 16; 0xc132
     MOV     ES, AX
     MOV     DI, 0
 
+    
+
     ; 获取VBE信息, 输出到ES:DI
     MOV     AX, 0x4F01 ;0x8208
-    MOV     CX, 0x0118
+    MOV     WORD CX, [DS:SI]; 显示模式ID 
+    CMP     CX, 0xFFFF
+    JE      vbe_query_no_suitable_mode
     INT     0x10
 
+    CMP     WORD [VBE_INFO + 18], 1024; 宽度
+    JNE     vbe_query_skip_curr
+    CMP     WORD [VBE_INFO + 20], 768; 高度
+    JNE     vbe_query_skip_curr
+    CMP     BYTE [VBE_INFO + 25], 24 ; BPP
+    JNE     vbe_query_skip_curr
+    JMP     vbe_query_done
+vbe_query_no_suitable_mode:
+    MOV     SI, MESSAGE_NO_SUITABLE_MODE
+    CALL    DIE
+vbe_query_skip_curr:
+    ADD     SI, 2
+    JMP     vbe_query_next_mode
+vbe_query_done:
+    MOV     BX, [DS:SI]
+    OR      BX, 0x4000
    ; SuperVGA视频模式
     MOV     AX, 0x4F02 ; 设置SuperVGA视频模式 0xc142
-    MOV     BX, 0x4118 ; 1024x768x16M 0x4000 | 0x118 (启用Linear FrameBuffer)
+    ; MOV     BX, 0x4118 ; 1024x768x16M 0x4000 | 0x118 (启用Linear FrameBuffer)
     INT     0x10
     
-    ; 探测内存
+    MOV     SI, MESSAGE_VIDEO_MODE_LOADED
+    CALL display_string
 
+
+
+    ; 探测内存
+detect_memory_start:
     XOR     EBX, EBX
     MOV     DWORD EDI, VAR_MEMORY_ENTRY_ARRAY
     MOV     AX, 0
@@ -240,5 +282,19 @@ PROGLOADER_MESSAGE_PREFIX:
 MESSAGE_PROGLOADER_LOADED:
     DB "Here is the progloader!"
     DB 0x0D, 0x0A, 0x00
+MESSAGE_VIDEO_MODE_LOADED:
+    DB "Video mode loaded."
+    DB 0x0D, 0x0A, 0x00
+MESSAGE_FAILED_TO_QUERY_VBE_INFO:
+    DB "Failed to query VBE info!"
+    DB 0x0D, 0x0A, 0x00
+MESSAGE_NO_SUITABLE_MODE:
+    DB "NO 1024*768*16M mode found!"
+    DB 0x0D, 0x0A, 0x00
+
+DIE:
+    CALL display_string
+    JMP $
+
 TIMES 512*2 - ($ - $$) - 4 DB 0x00
 DB 0xCA, 0xFE, 0xBA, 0xBE

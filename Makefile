@@ -59,7 +59,11 @@ helloos-fat32.img: helloos-empty-fat32.img progload.bin kernel.bin ascii_font.bi
 	mcopy -i helloos-fat32.img kernel.bin ::
 	mcopy -i helloos-fat32.img ascii_font.bin ::
 	
-	
+helloos.vhd: helloos-fat32.img
+	qemu-img.exe convert -f raw -O vpc helloos-fat32.img helloos.vhd
+helloos.qcow2: helloos-fat32.img
+	qemu-img.exe convert -f raw -O qcow2 helloos-fat32.img helloos.qcow2
+
 # helloos.img: bootloader.bin progloader.bin cprog_with_start.bin
 # 	dd if=/dev/zero of=helloos.img bs=512 count=2880
 # 	dd if=bootloader.bin ibs=512 of=helloos.img count=1 seek=0 conv=notrunc

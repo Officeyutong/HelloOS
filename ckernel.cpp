@@ -29,13 +29,19 @@ uint64_t makeTime() {
     return r;
 }
 static void collect_memory() {
+    uint64_t total_memory_in_bytes = 0;
+    char buf[512];
+
     for (int i = 0; i < memory_usage_pack_ref.count; i++) {
-        char buf[512];
         const auto& curr = memory_usage_pack_ref.arr[i];
         sprintf(buf, "base=%08llx, length=%08llx, type=%u", curr.base,
                 curr.length, curr.type);
-        write_string_at(40, 100 + i * 18, buf, 0xffffff, 0);
+        write_string_at(40, 120 + i * 18, buf, 0xffffff, 0);
+        if (curr.type == 1)
+            total_memory_in_bytes += curr.length;
     }
+    sprintf(buf, "Total memory: %lldMB", total_memory_in_bytes / 1024 / 1024);
+    write_string_at(40, 100, buf, 0xFFFFFF, 0);
 }
 static void init_gdt_idt() {
     for (int i = 0; i < GDT_COUNT; i++)
@@ -59,7 +65,7 @@ static void init_gdt_idt() {
 
 static void init_paging() {
     map_memory_page(0, 0xff);
-    map_memory_page(0x260, 0x4ff);
+    map_memory_page(0x200, 0x4ff);
     map_memory_page(0xfd000, 0xfd24f);
     asm("movl %0, %%eax;"
         "movl %%eax, %%cr3;"

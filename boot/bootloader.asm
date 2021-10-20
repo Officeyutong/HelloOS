@@ -147,6 +147,7 @@ main:
 
     JMP     boot_continue
 
+
     ALIGNB 4, DB 0x00
 LBA_READ_STRUCT: ; 0x7c7c
     DB      16

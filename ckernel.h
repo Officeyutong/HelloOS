@@ -15,10 +15,13 @@
 #define gdt_info ((GDT*)0x270000)
 #define idt_info ((IDT*)0x26F800)
 
-#define kernel_page_directory ((PageDirectory*)0x26E000)
+#define kernel_page_directory ((PageDirectory*)0x26D000)
 #define kernel_page_table_first ((PageTable*)0x26C000)
-#define ascii_font_table ((ASCIIFontTable*)0x26D000)
+#define ascii_font_table ((ASCIIFontTable*)0x26E000)
 #define memory_usage_pack ((MemoryUsagePack*)0x700)
+#define kernel_preserve_start ((uint32_t)0x250000)
+#define kernel_preserve_end ((uint32_t)0x47FFFF)
+
 
 #define PIC1_COMMAND ((uint16_t)(0x0020))
 #define PIC1_DATA ((uint16_t)(0x0021))

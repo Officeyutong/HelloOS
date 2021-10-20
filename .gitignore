@@ -22,3 +22,5 @@ kernel.bin
 kernel.elf
 a.out
 test.py
+helloos.vhd
+helloos.qcow2

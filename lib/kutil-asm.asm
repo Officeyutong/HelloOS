@@ -21,7 +21,7 @@ io_out16: ; void io_out16(uint16_t port,uint16_t data)
     MOV EBP, ESP
     MOV WORD AX, [EBP + 12] ; data
     MOV WORD DX, [EBP + 8]
-    OUT DX, AL
+    OUT DX, AX
     LEAVE
     RET    
 

@@ -1,6 +1,7 @@
 #ifndef _HARDDISK_H
 #define _HARDDISK_H
 #include <cinttypes>
+#include "../include/kutil.h"
 #include "../include/boot_meta.h"
 namespace fat32 {
 const uint32_t FILE_NOT_EXISTS = 0x0FFFFFFF;
@@ -61,6 +62,10 @@ struct FAT32Reader {
     uint64_t get_sector_by_cluster(uint32_t cluster) {
         return this->boot_meta_info->rootdir_start_sector +
                (uint64_t)(cluster - 2) * info->mbr.cluster_size;
+    }
+    void wait_for_DRQ() {
+        while (!(io_in8(0x1F7) & (1 << 3)))
+            ;
     }
 };
 }  // namespace fat32

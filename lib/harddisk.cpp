@@ -23,7 +23,7 @@ void FAT32Reader::read_sector(void* buffer,
     io_out8(0x1F4, (low >> 8) & 0xFF);
     io_out8(0x1F5, (low >> 16) & 0xFF);
     io_out8(0x1F7, 0x24);
-
+    wait_for_DRQ();
     for (int i = 0; i < sector_count; i++) {
         for (int j = 0; j < 14; j++)
             io_in8(0x1F7);
