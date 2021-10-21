@@ -14,6 +14,7 @@ struct boot_meta_info_struct {
     uint32_t cluster_size_in_byte;
     uint32_t data_start_sector;
     uint32_t rootdir_entry_count;
+    uint8_t boot_drive_number;
 } __attribute__((packed, aligned(1)));
 struct MBRBootSector {
     uint8_t jmp[2];

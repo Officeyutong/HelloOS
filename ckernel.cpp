@@ -1,5 +1,6 @@
 #include "ckernel.h"
 #include <inttypes.h>
+#include "include/cmos_rtc.h"
 #include "include/display.h"
 #include "include/gdt.h"
 #include "include/harddisk.h"
@@ -10,7 +11,6 @@
 #include "include/kutil.h"
 #include "include/memory.h"
 #include "include/string.h"
-
 PageTable* next_kernel_page_table = kernel_page_table_first;
 static const MemoryUsagePack& memory_usage_pack_ref = *memory_usage_pack;
 static uint32_t seed = 0;
@@ -66,7 +66,11 @@ static void init_gdt_idt() {
 static void init_paging() {
     map_memory_page(0, 0xff);
     map_memory_page(0x200, 0x4ff);
-    map_memory_page(0xfd000, 0xfd24f);
+    const uint32_t framebuffer_size = vbe_info->pitch * vbe_info->height;
+    const uint32_t tailaddr =
+        ((uint32_t)vbe_info->framebuffer) + framebuffer_size - 1;
+    map_memory_page(((uint32_t)vbe_info->framebuffer) / 4096,
+                    1 + tailaddr / 4096);
     asm("movl %0, %%eax;"
         "movl %%eax, %%cr3;"
         "movl %%cr0, %%eax;"
@@ -130,6 +134,8 @@ static void init_mouse() {
     io_out8(KEYBOARD_DATA, 0xF4);
 }
 extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
+    const auto& ref = *boot_meta;
+
     init_gdt_idt();
     init_paging();
     init_pic(0x20, 0x28);
@@ -139,24 +145,34 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     using namespace fat32;
     init_keyboard();
     FAT32Reader reader(boot_sector, boot_meta);
+    {
+        char buf[512];
+        auto ret = reader.get_identity_data(buf);
+        int x = 1;
+    }
     DirectoryEntry file;
     auto start_cluster =
         reader.find_file(reader.info->root_cluster, "ascii_font.bin", file);
     reader.read_file(start_cluster, file.size, ascii_font_table);
     char str_buf[1024];
+    char boot_time[512];
+    cmos_rtc::CMOS_RTC().read().print_str(boot_time);
     sprintf(str_buf,
-            "Build time: %s, resolution: (%u, %u), kernel_size: %u\n\n"
+            "Build time: %s, boot time: %s \nResolution: (%u, %u), "
+            "kernel_size: %u\n\n"
             // "kb fAKe"
             ,
-            __TIMESTAMP__, vbe_info->width, vbe_info->height,
+            __TIMESTAMP__, boot_time, vbe_info->width, vbe_info->height,
             boot_meta->kernel_size);
     write_string_at(40, 40, str_buf, 0xffffff, 0x0);
+
     collect_memory();
     init_mouse();
     io_out8(PIC1_DATA, 0xF9);  // 允许键盘中断和从中断器
     io_out8(PIC2_DATA, 0xEF);  // 允许鼠标中断
     keyboard_mouse::MouseDecoder mouse;
     int32_t mouse_x = 0, mouse_y = 0;
+
     while (true) {
         asm("cli");
         if (keyboard_mouse::keyboard_buffer.len != 0) {

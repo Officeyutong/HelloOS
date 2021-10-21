@@ -1,6 +1,6 @@
 include ../make_def.txt
 
-all: kprintf.o string.o ctype.o display.o kutil.o kutil-asm.o harddisk.o paging.o idt.o gdt.o interrupt-asm.o interrupt.o keyboard_mouse.o
+all: kprintf.o string.o ctype.o display.o kutil.o kutil-asm.o harddisk.o paging.o idt.o gdt.o interrupt-asm.o interrupt.o keyboard_mouse.o cmos_rtc.o
 
 kprintf.o: kprintf.cpp
 	$(CXX_COMPILE) kprintf.cpp -o kprintf.o
@@ -20,6 +20,8 @@ interrupt.o: interrupt.cpp
 	$(CXX_COMPILE) interrupt.cpp -o interrupt.o
 keyboard_mouse.o: keyboard_mouse.cpp
 	$(CXX_COMPILE) keyboard_mouse.cpp -o keyboard_mouse.o
+keyboard_mouse.o: cmos_rtc.cpp
+	$(CXX_COMPILE) cmos_rtc.cpp -o cmos_rtc.o
 
 kutil-asm.o: kutil-asm.asm
 	nasm kutil-asm.asm -f elf32 -o kutil-asm.o

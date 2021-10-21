@@ -9,6 +9,29 @@ FAT32Reader::FAT32Reader(const FAT32BootSector* info,
                          const boot_meta_info_struct* boot_meta_info)
     : info(info), boot_meta_info(boot_meta_info) {}
 
+IdentityResult FAT32Reader::get_identity_data(void* buf) {
+    this->reset();
+    io_out8(ATAPort::DRIVE_SELECT, ATADrive::MASTER);
+    for (int i = 0x1F2; i <= 0x1F5; i++)
+        io_out8(i, 0);
+    io_out8(ATAPort::COMMAND, 0xEC);
+    if (io_in8(ATAPort::STATUS) == 0)
+        return IdentityResult::NOT_ATA_DEVICE;
+    while (io_in8(ATAPort::STATUS) & ATAStatus::BSY)
+        ;
+    if (io_in8(ATAPort::LBAMid) != 0 || io_in8(ATAPort::LBAHigh) != 0)
+        return IdentityResult::NOT_EXISTS;
+    while (true) {
+        auto r = io_in8(ATAPort::STATUS);
+        using namespace ATAStatus;
+        if (r & ERR)
+            return IdentityResult::ERROR;
+        if (r & DRQ)
+            break;
+    }
+    io_ins16(ATAPort::DATA, (uint32_t)buf, 256);
+    return IdentityResult::DONE;
+}
 void FAT32Reader::read_sector(void* buffer,
                               uint32_t low,
                               uint16_t high,
@@ -23,13 +46,14 @@ void FAT32Reader::read_sector(void* buffer,
     io_out8(0x1F4, (low >> 8) & 0xFF);
     io_out8(0x1F5, (low >> 16) & 0xFF);
     io_out8(0x1F7, 0x24);
-    wait_for_DRQ();
+    if (!(io_in8(ATAPort::STATUS) & ATAStatus::RDY)) {
+        wait_for_DRQ();
+    }
     for (int i = 0; i < sector_count; i++) {
-        for (int j = 0; j < 14; j++)
-            io_in8(0x1F7);
-        while (io_in8(0x1F7) & (1 << 7))
-            ;
+        wait_for_BSY();
+        wait_for_DRQ();
         io_ins16(0x1F0, ((uint32_t)buffer) + i * 512, 256);
+        delay_400ns();
     }
 }
 uint32_t FAT32Reader::find_file(uint32_t cluster,

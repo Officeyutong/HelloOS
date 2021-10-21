@@ -20,6 +20,7 @@ ORG 0x8100
     VAR_CLUSTER_SIZE_IN_BYTE EQU 0x600 + 24;4byte 簇大小，字节
     VAR_DATA_START_SECTOR EQU 0x600 + 28; 数据区开始扇区，4byte
     VAR_ROOT_DIR_ENTRIES EQU 0x600 + 32; 根目录区项数，4byte
+    VAR_BOOT_DRIVE_NUMBER EQU 0x600 + 36; 启动驱动器号，1byte
 
     ; 0x7E00 ~ 0x7FFFF - 实模式可用内存
     ; 0x500 ~ 0x7BFF - 实模式可用内存
@@ -66,7 +67,7 @@ boot_continue:
     MOV     SI, LBA_READ_STRUCT
 
     MOV     AH, 0x42
-    MOV     DL, 0x80
+    MOV     DL, [VAR_BOOT_DRIVE_NUMBER]
     INT     0x13
     
     CMP     AH, 0 ; 0x7ca2
@@ -151,15 +152,15 @@ scan_exit:
 ; 读取文件，保存到指定地址
 ;       ESI: 簇号, 4 byte
 ;       ES:DI: 缓冲地址
-read_file: ; 0x81de
-    PUSH    DI
+read_file: ; 
+    PUSH    DI ; 0x81e9
     PUSH    ESI
     XOR     ECX, ECX; 0x7d25
 read_file_read_next_cluster:
-    MOV     DWORD EBX, [ESP]  ; 0x81e4
+    MOV     DWORD EBX, [ESP]  ; 0x81e9
     ; 当前簇ID在[ESP]
     MOV     ESI, EBX
-    CALL    read_cluster
+    CALL    read_cluster ; 0x81f7
 
     ; 计算所属的扇区
     SHR     EBX, 7 ; 每个扇区存128个簇号，故右移7位
@@ -178,15 +179,15 @@ read_file_read_next_cluster:
     MOV     SI, LBA_READ_STRUCT
 
     MOV     AH, 0x42
-    MOV     DL, 0x80 ; 0x7d4e
-    INT     0x13 
-    MOV     DWORD EAX, [ESP]
+    MOV     DL, [VAR_BOOT_DRIVE_NUMBER] ; 0x7d4e
+    INT     0x13    ; 0x822a
+    MOV     DWORD EAX, [ESP] ; 0x822c
     ; 扇区内偏移
     AND     EAX, 0x7f
     MOV     DWORD EBX, [FAT_ACCESS_CACHE + EAX * 4] ; EBX: 下一个簇号
 
     CMP     EBX, 0x0FFFFFF7 ; 0x7d71
-    JGE     read_file_end ; 读到头了
+    JGE     read_file_end ; 读到头了 0x825d
     
     
     MOV     [ESP], EBX ; 保存下一个簇号
@@ -223,7 +224,7 @@ read_cluster:
     MOV     SI, LBA_READ_STRUCT
 
     MOV     AH, 0x42
-    MOV     DL, 0x80
+    MOV     DL, [VAR_BOOT_DRIVE_NUMBER]
     INT     0x13
     POP     ESI
     POP     EAX

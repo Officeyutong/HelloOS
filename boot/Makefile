@@ -14,3 +14,4 @@ empty_fat32.bin: empty_fat32.asm
 
 clean: 
 	$(DEL) *.o
+	$(DEL) *.bin

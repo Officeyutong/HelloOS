@@ -48,6 +48,7 @@ ORG 0xC600  ;引导器加载的后面的扇区的地址
     VAR_CLUSTER_SIZE_IN_BYTE EQU 0x600 + 24;4byte 簇大小，字节
     VAR_DATA_START_SECTOR EQU 0x600 + 28; 数据区开始扇区，4byte
     VAR_ROOT_DIR_ENTRIES EQU 0x600 + 32; 根目录区项数，4byte
+    VAR_BOOT_DRIVE_NUMBER EQU 0x600 + 36; 启动驱动器号，1byte
 
     VAR_MEMORY_ENTRY_COUNT EQU 0x700 ; 内存项数, 4byte
     VAR_MEMORY_ENTRY_ARRAY EQU 0x700 + 4
@@ -80,7 +81,17 @@ kernel_loaded:
     MOV     DI, AX
     MOV     AX, 0
     MOV     ES, AX
-    CALL    [FUNC_READ_FILE] ; 0xc12e
+
+    ; PUSH    SI
+    ; MOV     SI, MESSAGE_PROGLOADER_LOADED
+    ; CALL    display_string
+    ; POP     SI
+    ; JMP $    ; 0xc62f
+
+    CALL    [FUNC_READ_FILE] ; 0xc62f
+    ; JMP $
+    MOV     SI, MESSAGE_KERNEL_LOADED ; 0xc636
+    CALL    display_string; 0xc639
 
     
     ; 查询VBE控制器信息 https://wiki.osdev.org/VESA
@@ -92,6 +103,9 @@ kernel_loaded:
     MOV     SI, MESSAGE_FAILED_TO_QUERY_VBE_INFO
     CMP     AX, 0x004F
     JNE     DIE ; 查询失败
+    MOV     SI, MESSAGE_VBE_CONTROLLER_INFO_LOADED
+    CALL    display_string
+
 
     MOV     WORD DS, [VBE_QUERY_CACHE + 14 + 2]
     MOV     WORD SI, [VBE_QUERY_CACHE + 14]
@@ -108,7 +122,7 @@ vbe_query_next_mode:
     MOV     WORD CX, [DS:SI]; 显示模式ID 
     CMP     CX, 0xFFFF
     JE      vbe_query_no_suitable_mode
-    INT     0x10
+    INT     0x10 ; 0xc671
 
     CMP     WORD [VBE_INFO + 18], 1024; 宽度
     JNE     vbe_query_skip_curr
@@ -126,13 +140,13 @@ vbe_query_skip_curr:
 vbe_query_done:
     MOV     BX, [DS:SI]
     OR      BX, 0x4000
-   ; SuperVGA视频模式
-    MOV     AX, 0x4F02 ; 设置SuperVGA视频模式 0xc142
+    ; SuperVGA视频模式
+    MOV     AX, 0x4F02 ; 设置SuperVGA视频模式 0xc69e
     ; MOV     BX, 0x4118 ; 1024x768x16M 0x4000 | 0x118 (启用Linear FrameBuffer)
     INT     0x10
     
     MOV     SI, MESSAGE_VIDEO_MODE_LOADED
-    CALL display_string
+    CALL display_string ; 0xc6a6
 
 
 
@@ -146,7 +160,7 @@ detect_memory_continue:
     MOV     EDX, 0x534D4150 ; 0xc654
     MOV     EAX, 0xE820
     MOV     ECX, 24
-    INT     0x15 ; 0xc666
+    INT     0x15 ; 0xc6c9
 
     CMP     EBX, 0 ; 0xc668
     JE      detect_memory_done
@@ -155,7 +169,7 @@ detect_memory_continue:
     MOV     DWORD ECX, [EDI + 12]
     OR      EAX, ECX
     CMP     EAX, 0
-    JE detect_memory_continue ; 抛弃长度为0的
+    JE      detect_memory_continue ; 抛弃长度为0的
 
     INC     DWORD [VAR_MEMORY_ENTRY_COUNT] ; 0xc681
     ADD     EDI, 24
@@ -164,7 +178,7 @@ detect_memory_done:
     INC     DWORD [VAR_MEMORY_ENTRY_COUNT] ; 0xc681
     ; 获取指示灯状态
     MOV     AH, 0x02 ; 0xc14a
-    INT     0x16
+    INT     0x16 ; 0xc6f6
     MOV     BYTE [VAR_LED_STATE_STORE], AL
 
     MOV		AL, 0xff
@@ -190,7 +204,7 @@ detect_memory_done:
     OR		EAX, 0x00000001	
     MOV		CR0, EAX ; 把CR0的bit0改成1，CR0具体有什么，见参考资料 0x825b
     
-    JMP     DWORD   1<<3:flush_pipeline ; 0xc183
+    JMP     DWORD   1<<3:flush_pipeline ; 0xc72d
 [BITS 32]
 flush_pipeline:
     ; 这里就到了保护模式了
@@ -210,7 +224,7 @@ flush_pipeline:
     MOV     ESI, KERNEL_CACHE
     MOV     EDI, KERNEL_OFFSET
     CLD
-    REP MOVSB
+    REP MOVSB ; 0xc75d
 
 
     
@@ -220,12 +234,12 @@ flush_pipeline:
     ; 获取主函数地址偏移
     ; MOV     ECX, [KERNEL_OFFSET + 0] ; 0xc1b5
     ; ADD     ECX, KERNEL_OFFSET  ; 内核主函数的绝对地址
-    MOV     EAX, 1<<3; 全局可执行段
+    MOV     EAX, 1<<3; 全局可执行段 0xc75f
     PUSH    AX  ; 0xc1e4 
     PUSH    DWORD   KERNEL_OFFSET
     ; MOV     AX, 1<<3
     ; MOV     DS, AX
-    JMP     FAR [SS:ESP]  ; 0xc6ca
+    JMP     FAR [SS:ESP]  ; 0xc76b
 
 wait_for_keyword_out:
     ; 等待IOPort 0x64清空
@@ -280,7 +294,7 @@ MESSAGE_KERNEL_NOT_FOUND:
 PROGLOADER_MESSAGE_PREFIX:
     DB "progloader: ",0x00
 MESSAGE_PROGLOADER_LOADED:
-    DB "Here is the progloader!"
+    DB "progloader loaded."
     DB 0x0D, 0x0A, 0x00
 MESSAGE_VIDEO_MODE_LOADED:
     DB "Video mode loaded."
@@ -290,6 +304,12 @@ MESSAGE_FAILED_TO_QUERY_VBE_INFO:
     DB 0x0D, 0x0A, 0x00
 MESSAGE_NO_SUITABLE_MODE:
     DB "NO 1024*768*16M mode found!"
+    DB 0x0D, 0x0A, 0x00
+MESSAGE_VBE_CONTROLLER_INFO_LOADED:
+    DB "Succeeded to load VBE controller info!"
+    DB 0x0D, 0x0A, 0x00
+MESSAGE_KERNEL_LOADED:
+    DB "Succeeded to read the kernel!"
     DB 0x0D, 0x0A, 0x00
 
 DIE:

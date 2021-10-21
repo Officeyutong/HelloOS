@@ -58,7 +58,24 @@ root_dir_start:
 ; 根目录表放在 0xA600~0xC5FF(512*16 byte)
 ; progload放在 0xC100 ~ 0xE0FF ; 最多8K
 
+    VAR_MESSAGE_PREFIX EQU 0x600; 2byte
+    VAR_KERNEL_SIZE EQU 0x600 + 2 ; 4byte
+    VAR_LAST_SIZE EQU 0x600 + 2 + 4 ; 4byte
+    VAR_LED_STATE_STORE EQU 0x600 + 10; 1byte 键盘LED灯状态的存储地址
+    VAR_FAT_SIZE EQU 0x600 + 11; 4byte, FAT表长度
+    VAR_FAT_START EQU 0x600 + 15; 2byte, FAT表起始位置
+    VAR_ROOT_ENTRY_START EQU 0x600 + 17; 4byte, 根目录区起始位置
+    VAR_ROOT_ENTRY_SIZE EQU 0x600 + 21; 2byte, 根目录区扇区数
+    VAR_CLUSTER_SIZE_IN_SECTOR EQU 0x600 + 23;1byte 簇大小，扇区
+    VAR_CLUSTER_SIZE_IN_BYTE EQU 0x600 + 24;4byte 簇大小，字节
+    VAR_DATA_START_SECTOR EQU 0x600 + 28; 数据区开始扇区，4byte
+    VAR_ROOT_DIR_ENTRIES EQU 0x600 + 32; 根目录区项数，4byte
+    VAR_BOOT_DRIVE_NUMBER EQU 0x600 + 36; 启动驱动器号，1byte
+
+
 main:
+    MOV [VAR_BOOT_DRIVE_NUMBER], DL
+
     MOV SP, 0x8000 ; 栈地址
     MOV AX, 0
     MOV SS, AX
@@ -80,19 +97,6 @@ main:
     FUNC_DISPLAY_STRING EQU 0x500
     FUNC_READ_CLUSTER EQU 0x500 + 2
     FUNC_FIND_FILE EQU 0x500 + 4
-
-    VAR_MESSAGE_PREFIX EQU 0x600; 2byte
-    VAR_KERNEL_SIZE EQU 0x600 + 2 ; 4byte
-    VAR_LAST_SIZE EQU 0x600 + 2 + 4 ; 4byte
-    VAR_LED_STATE_STORE EQU 0x600 + 10; 1byte 键盘LED灯状态的存储地址
-    VAR_FAT_SIZE EQU 0x600 + 11; 4byte, FAT表长度
-    VAR_FAT_START EQU 0x600 + 15; 2byte, FAT表起始位置
-    VAR_ROOT_ENTRY_START EQU 0x600 + 17; 4byte, 根目录区起始位置
-    VAR_ROOT_ENTRY_SIZE EQU 0x600 + 21; 2byte, 根目录区扇区数
-    VAR_CLUSTER_SIZE_IN_SECTOR EQU 0x600 + 23;1byte 簇大小，扇区
-    VAR_CLUSTER_SIZE_IN_BYTE EQU 0x600 + 24;4byte 簇大小，字节
-    VAR_DATA_START_SECTOR EQU 0x600 + 28; 数据区开始扇区，4byte
-    VAR_ROOT_DIR_ENTRIES EQU 0x600 + 32; 根目录区项数，4byte
 
     MOV     WORD [FUNC_DISPLAY_STRING], display_string
 
@@ -137,7 +141,7 @@ main:
 
     MOV     AH, 0x41
     MOV     BX, 0x55AA
-    MOV     DL, 0x80
+    MOV     DL, [VAR_BOOT_DRIVE_NUMBER]
     INT     0x13
     PUSHFD
     MOV     EAX, [ESP]
@@ -171,7 +175,7 @@ boot_continue:
     MOV     SI, LBA_READ_STRUCT
 
     MOV     AH, 0x42
-    MOV     DL, 0x80
+    MOV     DL, [VAR_BOOT_DRIVE_NUMBER]
     INT     0x13
     
     CMP     AH, 0 ; 0x7ca2
@@ -276,6 +280,22 @@ ERROR_STRING:
 ;     DB 0x0D,0x0A
 ;     DB 0x00
 
-    times 510 - ($ - $$) db 0
+    times 512 - 2 - ($ - $$) db 0
+    ; DD      0xCAFEBABE; 磁盘ID
+    ; DW      0 ; 保留
+    ; ; 分区项1
+    ; DB      0x80 ; 0x80表示可启动
+    ; ; 开始CHS
+    ; DB      0 ; 磁头
+    ; DW      0x0001 ; 6bits扇区&10bits柱面，柱面0扇区1
+    ; DB      0x0B ; 系统ID
+    ; ; 结束CHS
+    ; DB      0x0A ; 磁头
+    ; DW      0x0208 ;  6bits扇区&10bits柱面
 
+    ; DD      0; 起始扇区号
+    ; DD      32768; 分区扇区数
+    ; TIMES 16 DB 0 ; 分区项2
+    ; TIMES 16 DB 0 ; 分区项3
+    ; TIMES 16 DB 0 ; 分区项4
     db    0x55, 0xaa

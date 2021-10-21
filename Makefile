@@ -1,6 +1,6 @@
 include make_def.txt
 
-LINK_FILES = ckernel.o ./lib/ctype.o ./lib/display.o ./lib/kprintf.o ./lib/string.o ./lib/kutil.o ./lib/kutil-asm.o ./lib/harddisk.o ./lib/paging.o ./lib/gdt.o ./lib/idt.o ./lib/interrupt-asm.o ./lib/interrupt.o ./lib/keyboard_mouse.o
+LINK_FILES = ckernel.o ./lib/ctype.o ./lib/display.o ./lib/kprintf.o ./lib/string.o ./lib/kutil.o ./lib/kutil-asm.o ./lib/harddisk.o ./lib/paging.o ./lib/gdt.o ./lib/idt.o ./lib/interrupt-asm.o ./lib/interrupt.o ./lib/keyboard_mouse.o ./lib/cmos_rtc.o
 
 
 ascii_font.bin: make_font.py hankaku.txt
@@ -71,15 +71,15 @@ helloos.qcow2: helloos-fat32.img
 # 	dd if=cprog_with_start.bin ibs=512 of=helloos.img count=1 seek=2 conv=notrunc
 	
 runx: helloos-fat32.img
-	qemu-system-i386.exe -m 512 -hda helloos-fat32.img -monitor telnet:127.0.0.1:2001,server,nowait
+	qemu-system-i386.exe -m 512 -hda helloos-fat32.img -monitor telnet:127.0.0.1:2001,server,nowait -rtc base=localtime
 debugx: helloos-fat32.img
-	qemu-system-i386.exe -m 512 -hda helloos-fat32.img -S -gdb tcp::2002 -monitor telnet:127.0.0.1:2001,server,nowait
+	qemu-system-i386.exe -m 512 -hda helloos-fat32.img -S -gdb tcp::2002 -monitor telnet:127.0.0.1:2001,server,nowait -rtc base=localtime
 run-gdb: kernel.elf
 	gdb kernel.elf \
-	-ex 'target remote 127.0.0.1:2002' 
-	# -ex 'break *0x7c00' \
-	# -ex 'set architecture i8086' \
-	# -ex 'set tdesc filename gdb/target.xml' 
+	-ex 'target remote 127.0.0.1:2002' \
+	-ex 'break *0x7c00' \
+	-ex 'set architecture i8086' \
+	-ex 'set tdesc filename gdb/target.xml' 
 	
 nasm-dump: bootloader.asm
 	nasm bootloader.asm -f bin -o bootloader-nasm.bin	
