@@ -20,3 +20,10 @@ jobs:
       
     - name: Build it!
       run: make helloos-fat32.img
+
+    - name: Upload results
+      uses: actions/upload-artifact@v2.2.4
+      with:
+        name: Build result
+        path: helloos-fat32.img
+        # The desired behavior if no files are found using the prov
