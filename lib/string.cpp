@@ -2,7 +2,7 @@
 #include <inttypes.h>
 void* memset(void* src, int val, size_t cnt) {
     char* p = (char*)src;
-    for (int i = 0; i < cnt; i++) {
+    for (size_t i = 0; i < cnt; i++) {
         *p = val;
         p++;
     }
@@ -11,7 +11,7 @@ void* memset(void* src, int val, size_t cnt) {
 void* memcpy(void* dest, const void* src, size_t cnt) {
     const char* s = (const char*)src;
     char* d = (char*)dest;
-    for (int i = 0; i < cnt; i++) {
+    for (size_t i = 0; i < cnt; i++) {
         *d = *s;
         s++, d++;
     }

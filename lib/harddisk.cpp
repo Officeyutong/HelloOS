@@ -75,11 +75,11 @@ uint32_t FAT32Reader::find_file(uint32_t cluster,
                 const LongFilenameEntry& filename =
                     *((LongFilenameEntry*)&buf[i]);
                 // 现在暂时只支持ASCII文件名
-                for (int j = 0; j < lengthof(filename.name_first5); j++)
+                for (uint32_t j = 0; j < lengthof(filename.name_first5); j++)
                     *(tail++) = filename.name_first5[j] & 0xff;
-                for (int j = 0; j < lengthof(filename.name_next6); j++)
+                for (uint32_t j = 0; j < lengthof(filename.name_next6); j++)
                     *(tail++) = filename.name_next6[j] & 0xff;
-                for (int j = 0; j < lengthof(filename.name_final2); j++)
+                for (uint32_t j = 0; j < lengthof(filename.name_final2); j++)
                     *(tail++) = filename.name_final2[j] & 0xff;
                 long_fileentry_count++;
                 continue;
@@ -90,12 +90,12 @@ uint32_t FAT32Reader::find_file(uint32_t cluster,
                     // 不使用长文件名
                     char local_filename[12];
                     char* tail = local_filename;
-                    for (int i = 0; i < lengthof(fileentry.filename); i++) {
+                    for (uint32_t i = 0; i < lengthof(fileentry.filename); i++) {
                         if (fileentry.filename[i] != ' ')
                             *(tail++) = fileentry.filename[i];
                     }
                     *(tail++) = '.';
-                    for (int i = 0; i < lengthof(fileentry.ext); i++) {
+                    for (uint32_t i = 0; i < lengthof(fileentry.ext); i++) {
                         if (fileentry.ext[i] != ' ')
                             *(tail++) = fileentry.ext[i];
                     }
@@ -138,7 +138,7 @@ uint32_t FAT32Reader::read_cluster_num(uint32_t cluster) {
 void FAT32Reader::read_file(uint32_t cluster, uint32_t size, void* buffer) {
     char* buf = (char*)buffer;
     char localbuf[8192];
-    auto cluster_size_in_bytes = 512 * info->mbr.cluster_size;
+    uint32_t cluster_size_in_bytes = 512 * info->mbr.cluster_size;
     while (cluster < 0x0FFFFFF8) {
         auto sector = this->get_sector_by_cluster(cluster);
         this->read_sector(localbuf, sector & 0xFFFFFFFF,

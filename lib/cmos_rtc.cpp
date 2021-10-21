@@ -30,14 +30,16 @@ CMOSResponse CMOS_RTC::read() {
     bool enable_binary_mode = !!(status_b & (1 << 2));
     bool afternoon = (!enable_24h) && (resp.hours & 0x80);
     resp.hours &= (~0x80);
-    hex_to_dec(resp.century);
-    hex_to_dec(resp.day_of_month);
-    hex_to_dec(resp.hours);
-    hex_to_dec(resp.minutes);
-    hex_to_dec(resp.seconds);
-    hex_to_dec(resp.weekday);
-    hex_to_dec(resp.year);
-    hex_to_dec(resp.month);
+    if (!enable_binary_mode) {
+        hex_to_dec(resp.century);
+        hex_to_dec(resp.day_of_month);
+        hex_to_dec(resp.hours);
+        hex_to_dec(resp.minutes);
+        hex_to_dec(resp.seconds);
+        hex_to_dec(resp.weekday);
+        hex_to_dec(resp.year);
+        hex_to_dec(resp.month);
+    }
     if (afternoon)
         resp.hours += 12;
     return resp;

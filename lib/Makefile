@@ -20,7 +20,7 @@ interrupt.o: interrupt.cpp
 	$(CXX_COMPILE) interrupt.cpp -o interrupt.o
 keyboard_mouse.o: keyboard_mouse.cpp
 	$(CXX_COMPILE) keyboard_mouse.cpp -o keyboard_mouse.o
-keyboard_mouse.o: cmos_rtc.cpp
+cmos_rtc.o: cmos_rtc.cpp
 	$(CXX_COMPILE) cmos_rtc.cpp -o cmos_rtc.o
 
 kutil-asm.o: kutil-asm.asm

@@ -32,7 +32,7 @@ static void collect_memory() {
     uint64_t total_memory_in_bytes = 0;
     char buf[512];
 
-    for (int i = 0; i < memory_usage_pack_ref.count; i++) {
+    for (uint32_t i = 0; i < memory_usage_pack_ref.count; i++) {
         const auto& curr = memory_usage_pack_ref.arr[i];
         sprintf(buf, "base=%08llx, length=%08llx, type=%u", curr.base,
                 curr.length, curr.type);
@@ -44,14 +44,14 @@ static void collect_memory() {
     write_string_at(40, 100, buf, 0xFFFFFF, 0);
 }
 static void init_gdt_idt() {
-    for (int i = 0; i < GDT_COUNT; i++)
+    for (uint32_t i = 0; i < GDT_COUNT; i++)
         write_segment_entry(gdt_info + i, 0, 0, 0, 0);
     // write_segment_entry(gdt_info , 0, 0, 0, 0);                  // 0项
     write_segment_entry(gdt_info + 1, 0, 0xfffff, 0x0c, 0x9a);  // 全局可执行
     write_segment_entry(gdt_info + 2, 0, 0xfffff, 0x0c, 0x92);  // 全局不可执行
     load_gdt(8 * GDT_COUNT - 1, gdt_info);
 
-    for (int i = 0; i < IDT_COUNT; i++)
+    for (uint32_t i = 0; i < IDT_COUNT; i++)
         write_interrupt_entry(idt_info + i, 0, 0, 0, 0, 0, 0);
     write_interrupt_entry(idt_info + 0x21, (uint32_t)&asm_interrupt_0x21,
                           1 << 3, 1, 0, 0, 0x0e);
