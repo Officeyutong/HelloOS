@@ -1,6 +1,6 @@
 include make_def.txt
 
-LINK_FILES = ckernel.o ./lib/ctype.o ./lib/display.o ./lib/kprintf.o ./lib/string.o ./lib/kutil.o ./lib/kutil-asm.o ./lib/harddisk.o ./lib/paging.o ./lib/gdt.o ./lib/idt.o ./lib/interrupt-asm.o ./lib/interrupt.o ./lib/keyboard_mouse.o ./lib/cmos_rtc.o
+LINK_FILES = ckernel.o ./lib/ctype.o ./lib/display.o ./lib/kprintf.o ./lib/string.o ./lib/kutil.o ./lib/kutil-asm.o ./lib/harddisk.o ./lib/paging.o ./lib/gdt.o ./lib/idt.o ./lib/interrupt-asm.o ./lib/interrupt.o ./lib/keyboard_mouse.o ./lib/cmos_rtc.o ./lib/serial.o
 
 
 ascii_font.bin: make_font.py hankaku.txt

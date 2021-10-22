@@ -11,6 +11,7 @@
 #include "include/kprintf.h"
 #include "include/kutil.h"
 #include "include/memory.h"
+#include "include/serial.h"
 #include "include/string.h"
 PageTable* next_kernel_page_table = kernel_page_table_first;
 static MemoryUsagePack& memory_usage_pack_ref = *memory_usage_pack;
@@ -186,12 +187,16 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     char str_buf[1024];
     char boot_time[512];
     cmos_rtc::CMOS_RTC().read().print_str(boot_time);
+    serial::SerialDevice com1(serial::COM::COM1);
+    bool serial_status = com1.init();
     sprintf(str_buf,
             "Build time: %s, boot time: %s \nResolution: (%u, %u), "
-            "kernel_size: %u\n\nUsable pages: %u, usable memory: %u MB",
+            "kernel_size: %u\n\nUsable pages: %u, usable memory: %u "
+            "MB\nSerial status: %d",
             __TIMESTAMP__, boot_time, vbe_info->width, vbe_info->height,
             boot_meta->kernel_size, page_allocator->usable_pages,
-            page_allocator->usable_pages * 4096 / 1024 / 1024);
+            page_allocator->usable_pages * 4096 / 1024 / 1024, serial_status);
+    com1.write_str("orz kernelbin");
     write_string_at(40, 40, str_buf, 0xffffff, 0x0);
     bool ok;
     auto u = page_allocator->allocate(ok);
