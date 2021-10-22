@@ -152,6 +152,7 @@ vbe_query_done:
 
     ; 探测内存
 detect_memory_start:
+    MOV     DWORD [VAR_MEMORY_ENTRY_COUNT], 0
     XOR     EBX, EBX
     MOV     DWORD EDI, VAR_MEMORY_ENTRY_ARRAY
     MOV     AX, 0
@@ -175,7 +176,7 @@ detect_memory_continue:
     ADD     EDI, 24
     JMP     detect_memory_continue
 detect_memory_done:
-    INC     DWORD [VAR_MEMORY_ENTRY_COUNT] ; 0xc681
+    INC     DWORD [VAR_MEMORY_ENTRY_COUNT] ; 0xc6ef
     ; 获取指示灯状态
     MOV     AH, 0x02 ; 0xc14a
     INT     0x16 ; 0xc6f6

@@ -74,10 +74,10 @@ struct LongFilenameEntry {
     uint16_t name_final2[2];
 } __attribute__((packed, aligned(1)));
 
-struct FAT32Reader {
+struct ATAPIO_FAT32Reader {
     const FAT32BootSector* info;
     const boot_meta_info_struct* boot_meta_info;
-    FAT32Reader(const FAT32BootSector* info,
+    ATAPIO_FAT32Reader(const FAT32BootSector* info,
                 const boot_meta_info_struct* boot_meta_info);
     void read_sector(void* buffer,
                      uint32_t low,

@@ -5,11 +5,12 @@
 #define lengthof(arr) (sizeof(arr) / sizeof(arr[0]))
 
 using namespace fat32;
-FAT32Reader::FAT32Reader(const FAT32BootSector* info,
-                         const boot_meta_info_struct* boot_meta_info)
+ATAPIO_FAT32Reader::ATAPIO_FAT32Reader(
+    const FAT32BootSector* info,
+    const boot_meta_info_struct* boot_meta_info)
     : info(info), boot_meta_info(boot_meta_info) {}
 
-IdentityResult FAT32Reader::get_identity_data(void* buf) {
+IdentityResult ATAPIO_FAT32Reader::get_identity_data(void* buf) {
     this->reset();
     io_out8(ATAPort::DRIVE_SELECT, ATADrive::MASTER);
     for (int i = 0x1F2; i <= 0x1F5; i++)
@@ -32,10 +33,10 @@ IdentityResult FAT32Reader::get_identity_data(void* buf) {
     io_ins16(ATAPort::DATA, (uint32_t)buf, 256);
     return IdentityResult::DONE;
 }
-void FAT32Reader::read_sector(void* buffer,
-                              uint32_t low,
-                              uint16_t high,
-                              uint16_t sector_count) {
+void ATAPIO_FAT32Reader::read_sector(void* buffer,
+                                     uint32_t low,
+                                     uint16_t high,
+                                     uint16_t sector_count) {
     io_out8(0x1F6, 0x40);
     io_out8(0x1F2, sector_count >> 8);
     io_out8(0x1F3, (low >> 24) & 0xFF);
@@ -56,9 +57,9 @@ void FAT32Reader::read_sector(void* buffer,
         delay_400ns();
     }
 }
-uint32_t FAT32Reader::find_file(uint32_t cluster,
-                                const char* filename_to_find,
-                                DirectoryEntry& output) {
+uint32_t ATAPIO_FAT32Reader::find_file(uint32_t cluster,
+                                       const char* filename_to_find,
+                                       DirectoryEntry& output) {
     char longfilename[256];
     char* tail = longfilename;
     int long_fileentry_count = 0;
@@ -90,7 +91,8 @@ uint32_t FAT32Reader::find_file(uint32_t cluster,
                     // 不使用长文件名
                     char local_filename[12];
                     char* tail = local_filename;
-                    for (uint32_t i = 0; i < lengthof(fileentry.filename); i++) {
+                    for (uint32_t i = 0; i < lengthof(fileentry.filename);
+                         i++) {
                         if (fileentry.filename[i] != ' ')
                             *(tail++) = fileentry.filename[i];
                     }
@@ -128,14 +130,16 @@ uint32_t FAT32Reader::find_file(uint32_t cluster,
     return FILE_NOT_EXISTS;
 }
 
-uint32_t FAT32Reader::read_cluster_num(uint32_t cluster) {
+uint32_t ATAPIO_FAT32Reader::read_cluster_num(uint32_t cluster) {
     uint64_t offset = info->mbr.fat_start_sector + (uint64_t)(cluster / 128);
     uint32_t buf[128];
     read_sector(buf, offset & 0xFFFFFFFF, (offset >> 32) & 0xFFFF, 1);
     return buf[cluster % 128];
 }
 
-void FAT32Reader::read_file(uint32_t cluster, uint32_t size, void* buffer) {
+void ATAPIO_FAT32Reader::read_file(uint32_t cluster,
+                                   uint32_t size,
+                                   void* buffer) {
     char* buf = (char*)buffer;
     char localbuf[8192];
     uint32_t cluster_size_in_bytes = 512 * info->mbr.cluster_size;
