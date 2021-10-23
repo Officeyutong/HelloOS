@@ -1,6 +1,6 @@
 include make_def.txt
 
-LINK_FILES = ckernel.o ./lib/ctype.o ./lib/display.o ./lib/kprintf.o ./lib/string.o ./lib/kutil.o ./lib/kutil-asm.o ./lib/harddisk.o ./lib/paging.o ./lib/gdt.o ./lib/idt.o ./lib/interrupt-asm.o ./lib/interrupt.o ./lib/keyboard_mouse.o ./lib/cmos_rtc.o ./lib/serial.o
+LINK_FILES = ckernel.o ./lib/ctype.o ./lib/display.o ./lib/kprintf.o ./lib/string.o ./lib/kutil.o ./lib/kutil-asm.o ./lib/harddisk.o ./lib/paging.o ./lib/gdt.o ./lib/idt.o ./lib/interrupt-asm.o ./lib/interrupt.o ./lib/keyboard_mouse.o ./lib/cmos_rtc.o ./lib/serial.o ./lib/gdt-cpp.o ./lib/idt-cpp.o
 
 
 ascii_font.bin: make_font.py hankaku.txt
@@ -77,9 +77,9 @@ debugx: helloos-fat32.img
 run-gdb: kernel.elf
 	gdb kernel.elf \
 	-ex 'target remote 127.0.0.1:2002' \
-	-ex 'break *0x7c00' \
-	-ex 'set architecture i8086' \
-	-ex 'set tdesc filename gdb/target.xml' 
+	-ex 'break *0x7c00'
+	# -ex 'set architecture i8086' \
+	# -ex 'set tdesc filename gdb/target.xml' 
 	
 nasm-dump: bootloader.asm
 	nasm bootloader.asm -f bin -o bootloader-nasm.bin	

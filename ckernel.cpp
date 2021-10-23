@@ -13,8 +13,19 @@
 #include "include/memory.h"
 #include "include/serial.h"
 #include "include/string.h"
-PageTable* next_kernel_page_table = kernel_page_table_first;
-static MemoryUsagePack& memory_usage_pack_ref = *memory_usage_pack;
+
+vbe_mode_info_structure* vbe_info = (vbe_mode_info_structure*)0xE600;
+boot_meta_info_struct* boot_meta = (boot_meta_info_struct*)0x0600;
+FAT32BootSector* boot_sector = (FAT32BootSector*)0x7C00;
+GDT* gdt_info = (GDT*)0x270000;
+IDT* idt_info = (IDT*)0x26F800;
+
+PageDirectory* kernel_page_directory = (PageDirectory*)0x26D000;
+PageTable* next_kernel_page_table = (PageTable*)0x26C000;
+ASCIIFontTable* ascii_font_table = (ASCIIFontTable*)0x26E000;
+MemoryUsagePack* memory_usage_pack = (MemoryUsagePack*)0x700;
+
+serial::SerialDevice* com1;
 static uint32_t seed = 0;
 static uint32_t rand() {
     seed ^= seed << 16;
@@ -33,13 +44,13 @@ uint64_t makeTime() {
 static void collect_memory() {
     uint64_t total_memory_in_bytes = 0;
     char buf[512];
-    algo::sort(memory_usage_pack_ref.arr,
-               memory_usage_pack_ref.arr + memory_usage_pack_ref.count,
+    algo::sort(memory_usage_pack->arr,
+               memory_usage_pack->arr + memory_usage_pack->count,
                [](const MemoryUsageEntry& a, const MemoryUsageEntry& b) {
                    return a.base < b.base;
                });
-    for (uint32_t i = 0; i < memory_usage_pack_ref.count; i++) {
-        const auto& curr = memory_usage_pack_ref.arr[i];
+    for (uint32_t i = 0; i < memory_usage_pack->count; i++) {
+        const auto& curr = memory_usage_pack->arr[i];
         sprintf(buf, "base=%08llx, length=%08llx, type=%u", curr.base,
                 curr.length, curr.type);
         write_string_at(40, 300 + i * 18, buf, 0xffffff, 0);
@@ -59,10 +70,15 @@ static void init_gdt_idt() {
 
     for (uint32_t i = 0; i < IDT_COUNT; i++)
         write_interrupt_entry(idt_info + i, 0, 0, 0, 0, 0, 0);
+    // 页错误
+    write_interrupt_entry(idt_info + 0x0e, (uint32_t)&asm_interrupt_0x0e,
+                          1 << 3, 1, 0, 0, 0x0e);
+    // 键盘
     write_interrupt_entry(idt_info + 0x21, (uint32_t)&asm_interrupt_0x21,
                           1 << 3, 1, 0, 0, 0x0e);
     write_interrupt_entry(idt_info + 0x27, (uint32_t)&asm_interrupt_0x27,
                           1 << 3, 1, 0, 0, 0x0e);
+    // 鼠标
     write_interrupt_entry(idt_info + 0x2c, (uint32_t)&asm_interrupt_0x2c,
                           1 << 3, 1, 0, 0, 0x0e);
 
@@ -72,8 +88,8 @@ static void init_gdt_idt() {
 static void init_paging() {
     page_allocator->init();
     // 标记可用内存区
-    for (uint32_t i = 0; i < memory_usage_pack_ref.count; i++) {
-        const auto& curr = memory_usage_pack_ref.arr[i];
+    for (uint32_t i = 0; i < memory_usage_pack->count; i++) {
+        const auto& curr = memory_usage_pack->arr[i];
         if (curr.type == 1) {
             uint64_t addr = curr.base;
             if (addr % 4096 != 0)
@@ -89,7 +105,7 @@ static void init_paging() {
     }
 
     map_reserve_memory_page(0, 0xff);
-    map_reserve_memory_page(0x100, 0x4ff);
+    map_reserve_memory_page(0x100, 0x480);
     const uint32_t framebuffer_size = vbe_info->pitch * vbe_info->height;
     const uint32_t tailaddr =
         ((uint32_t)vbe_info->framebuffer) + framebuffer_size - 1;
@@ -188,6 +204,7 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     char boot_time[512];
     cmos_rtc::CMOS_RTC().read().print_str(boot_time);
     serial::SerialDevice com1(serial::COM::COM1);
+    ::com1 = &com1;
     bool serial_status = com1.init();
     sprintf(str_buf,
             "Build time: %s, boot time: %s \nResolution: (%u, %u), "
@@ -196,12 +213,10 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
             __TIMESTAMP__, boot_time, vbe_info->width, vbe_info->height,
             boot_meta->kernel_size, page_allocator->usable_pages,
             page_allocator->usable_pages * 4096 / 1024 / 1024, serial_status);
-    com1.write_str("orz kernelbin");
+    com1.write_str("orz kernelbin\r\n");
     write_string_at(40, 40, str_buf, 0xffffff, 0x0);
     bool ok;
     auto u = page_allocator->allocate(ok);
-    // for (int i = 0; i < 1e6; i++)
-    //     u = page_allocator->allocate(ok);
     {
         sprintf(
             str_buf,
@@ -225,7 +240,7 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     io_out8(PIC2_DATA, 0xEF);  // 允许鼠标中断
     keyboard_mouse::MouseDecoder mouse;
     int32_t mouse_x = 0, mouse_y = 0;
-
+    // *((int*)0x481234) = 233;
     while (true) {
         asm("cli");
         if (keyboard_mouse::keyboard_buffer.len != 0) {
@@ -248,46 +263,4 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
             asm("sti;hlt");
         }
     }
-}
-
-void write_segment_entry(void* ptr,
-                         uint32_t base,
-                         uint32_t limit,
-                         uint8_t flags,
-                         uint8_t access_byte) {
-    uint64_t u = 0;
-    u = u | (limit & 0xffff);
-    u = u | ((((uint64_t)limit) >> 16) & 0xf) << 48;
-
-    u = u | (((uint64_t)base & 0xffffff) << 16);
-    u = u | ((((uint64_t)base >> 24) & 0xff) << 56);
-
-    u = u | (((uint64_t)access_byte) << 40);
-
-    u = u | (((uint64_t)flags & 0x0f) << 52);
-
-    *((uint64_t*)ptr) = u;
-}
-
-void write_interrupt_entry(void* ptr,
-                           uint32_t offset,
-                           uint16_t selector,
-                           uint8_t present,
-                           uint8_t DPL,
-                           uint8_t S,
-                           uint8_t gate_type) {
-    uint64_t u = 0;
-    // 写offset
-    u |= (offset & 0xffff);
-    u |= (((uint64_t)offset >> 16) << 48);
-    // 写selector
-    u |= (selector << 16);
-    // 拼接type并写进去
-    uint8_t type = 0;
-    type |= ((present & 1) << 7);
-    type |= ((DPL & 3) << 5);
-    type |= ((S & 1) << 4);
-    type |= (gate_type & 0x0f);
-    u |= ((uint64_t)type << 40);
-    *((uint64_t*)ptr) = u;
 }

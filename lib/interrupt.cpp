@@ -4,6 +4,15 @@
 #include "../include/keyboard_mouse.h"
 #include "../include/kprintf.h"
 #include "../include/kutil.h"
+extern "C" void c_interrupt_0x0e(void* addr,
+                                 PageDirectory* page_dir,
+                                 uint32_t error) {
+    char buf[512];
+    sprintf(buf, "Page fault! Addr:0x%08x, page dir: 0x%08x, error: 0x%08x",
+            addr, page_dir, error);
+    com1->write_str(buf);
+    while(true);
+}
 extern "C" void c_interrupt_0x21(void* esp) {
     io_out8(PIC1_COMMAND, 0x61);
     uint8_t keycode = io_in8(keyboard_mouse::KEYBOARD_DATA);

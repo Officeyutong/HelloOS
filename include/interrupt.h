@@ -1,6 +1,9 @@
 #ifndef _INTERRUPT_H
 #define _INTERRUPT_H
 
+
+extern "C" void asm_interrupt_0x0e();
+extern "C" void c_interrupt_0x0e(void* esp);
 extern "C" void asm_interrupt_0x21();
 extern "C" void c_interrupt_0x21(void* esp);
 extern "C" void asm_interrupt_0x27();
