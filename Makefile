@@ -107,6 +107,10 @@ clean:
 	$(DEL) kernel-dump-*.txt
 	$(DEL) kernel.elf
 	$(DEL) ascii_font.bin
+	$(DEL) helloos.qcow2
+	$(DEL) helloos.vhd
+	$(DEL) fuck.sh
+	$(DEL) err.txt
 
 	cd lib && $(MAKE) clean
 	cd boot && $(MAKE) clean

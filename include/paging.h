@@ -58,5 +58,6 @@ struct PageAllocator {
 } __attribute__((packed, aligned(1)));
 
 void map_reserve_memory_page(uint32_t begin, uint32_t end);
+void map_kernel_page(uint32_t virtual_page_addr, uint32_t phy_page_addr);
 extern PageAllocator* page_allocator;
 #endif

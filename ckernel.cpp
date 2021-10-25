@@ -240,7 +240,10 @@ extern "C" __attribute__((section("section_kernel_main"))) void kernel_main() {
     io_out8(PIC2_DATA, 0xEF);  // 允许鼠标中断
     keyboard_mouse::MouseDecoder mouse;
     int32_t mouse_x = 0, mouse_y = 0;
-    // *((int*)0x481234) = 233;
+    // *((int*)0x1141234) = 233;
+    // for (int* v = (int*)0x480000; v <= (int*)0x1140000; v += 4096 / 4) {
+    //     *v = 2333;
+    // }
     while (true) {
         asm("cli");
         if (keyboard_mouse::keyboard_buffer.len != 0) {
